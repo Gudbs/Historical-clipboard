@@ -45,8 +45,9 @@
 | 界面 HTML（搜索框 + 卡片列表 + 设置面板） | [renderer/index.html](renderer/index.html) |
 | 界面样式（卡片 / 置顶 / 缩略图 / 搜索） | [renderer/style.css](renderer/style.css) |
 | 界面逻辑（渲染卡片、搜索筛选、调 IPC） | [renderer/app.js](renderer/app.js) |
-| 应用 / 安装包图标（256×256 PNG） | [build/icon.png](build/icon.png) |
+| 应用 / 安装包 / 窗口图标（多分辨率 ICO，16/32/48/256） | [build/icons/icon.ico](build/icons/icon.ico) |
 | 托盘图标（32×32 PNG） | [build/tray-icon.png](build/tray-icon.png) |
+| 图标一键重新生成 | [scripts/gen-icons.js](scripts/gen-icons.js) |
 | 打包配置（`build` 字段）与脚本 | [package.json](package.json) |
 | 国内镜像加速 | [.npmrc](.npmrc) |
 | 零基础分步教程 | [docs/教程.md](docs/教程.md) |

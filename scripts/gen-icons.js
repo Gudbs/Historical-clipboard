@@ -122,10 +122,44 @@ function makeIcon(size) {
   return encodePng(size, size, rgba);
 }
 
+/** 把多张 PNG 打包为 Windows ICO 文件（Vista+ 支持 ICO 内嵌 PNG 图层） */
+function encodeIco(images) {
+  const count = images.length;
+  const headerSize = 6 + count * 16;
+  const header = Buffer.alloc(headerSize);
+  header.writeUInt16LE(0, 0);                 // reserved
+  header.writeUInt16LE(1, 2);                 // type: icon
+  header.writeUInt16LE(count, 4);             // 图层数量
+  let offset = headerSize;
+  const chunks = [];
+  images.forEach((img, i) => {
+    const entry = Buffer.alloc(16);
+    entry[0] = img.size >= 256 ? 0 : img.size; // width（256 记作 0）
+    entry[1] = img.size >= 256 ? 0 : img.size; // height
+    entry[2] = 0;                              // 颜色数（0 = 默认）
+    entry[3] = 0;                              // reserved
+    entry.writeUInt16LE(1, 4);                 // planes
+    entry.writeUInt16LE(32, 6);                // bit count
+    entry.writeUInt32LE(img.png.length, 8);    // 图像数据字节数
+    entry.writeUInt32LE(offset, 12);           // 图像数据偏移
+    entry.copy(header, 6 + i * 16);
+    chunks.push(img.png);
+    offset += img.png.length;
+  });
+  return Buffer.concat([header, ...chunks]);
+}
+
 /* ---------- 输出 ---------- */
 const outDir = path.join(__dirname, '..', 'build');
+const iconsDir = path.join(outDir, 'icons');
 fs.mkdirSync(outDir, { recursive: true });
+fs.mkdirSync(iconsDir, { recursive: true });
 
 fs.writeFileSync(path.join(outDir, 'icon.png'), makeIcon(256));
 fs.writeFileSync(path.join(outDir, 'tray-icon.png'), makeIcon(32));
-console.log('图标已生成：build/icon.png (256x256) + build/tray-icon.png (32x32)');
+
+// 多分辨率 ICO：16 / 32 / 48 / 256（Windows 专用，嵌入 exe 用）
+const sizes = [16, 32, 48, 256];
+const images = sizes.map((s) => ({ size: s, png: makeIcon(s) }));
+fs.writeFileSync(path.join(iconsDir, 'icon.ico'), encodeIco(images));
+console.log('图标已生成：build/icon.png + build/tray-icon.png + build/icons/icon.ico');

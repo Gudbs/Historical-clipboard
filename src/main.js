@@ -36,7 +36,7 @@ if (!gotLock) {
       minWidth: 640,
       minHeight: 480,
       title: '剪贴板历史',
-      icon: path.join(__dirname, '..', 'build', 'icon.png'),
+      icon: path.join(__dirname, '..', 'build', 'icons', 'icon.ico'),
       webPreferences: {
         contextIsolation: true,   // 渲染进程与主进程隔离，安全
         nodeIntegration: false,

@@ -1,7 +1,7 @@
 {
   "name": "clip-history",
   "productName": "ClipHistory",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Windows 本地剪贴板历史记录工具（全程离线，数据只存本机）",
   "author": "ClipHistory",
   "main": "src/main.js",
@@ -29,11 +29,11 @@
       "package.json"
     ],
     "win": {
-      "icon": "build/icon.png",
+      "icon": "build/icons/icon.ico",
       "target": [
         "nsis"
       ],
-      "signAndEditExecutable": false
+      "signAndEditExecutable": true
     },
     "nsis": {
       "oneClick": true,
