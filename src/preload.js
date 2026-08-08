@@ -13,6 +13,10 @@ contextBridge.exposeInMainWorld('clipHistory', {
   getSettings: () => ipcRenderer.invoke('clip:getSettings'),
   setSettings: (patch) => ipcRenderer.invoke('clip:setSettings', patch),
   quit: () => ipcRenderer.invoke('clip:quit'),
+  // 打开帮助文档（'readme' 或 'tutorial'）
+  openDoc: (type) => ipcRenderer.invoke('help:openDoc', type),
+  // 获取当前软件版本号
+  getVersion: () => ipcRenderer.invoke('clip:getVersion'),
   // 订阅数据变化推送（新增/删除/置顶等都会触发）
   onChanged: (cb) => { ipcRenderer.on('clip:changed', (_e, data) => cb(data)); }
 });

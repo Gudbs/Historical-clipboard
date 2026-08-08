@@ -1,7 +1,7 @@
 {
   "name": "clip-history",
   "productName": "ClipHistory",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Windows 本地剪贴板历史记录工具（全程离线，数据只存本机）",
   "author": "ClipHistory",
   "main": "src/main.js",
@@ -42,6 +42,10 @@
     },
     "asarUnpack": [
       "build/tray-icon.png"
+    ],
+    "extraResources": [
+      { "from": "README.md", "to": "docs/README.md" },
+      { "from": "docs/教程.md", "to": "docs/教程.md" }
     ]
   }
 }

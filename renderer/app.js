@@ -293,6 +293,10 @@ async function openSettings() {
 settingsBtn.addEventListener('click', openSettings);
 settingsClose.addEventListener('click', () => hideModal('settingsModal'));
 
+// 帮助文档按钮：用系统默认程序打开 README / 教程
+document.getElementById('helpReadme').addEventListener('click', () => api.openDoc('readme'));
+document.getElementById('helpTutorial').addEventListener('click', () => api.openDoc('tutorial'));
+
 // 留存天数选择后立即生效
 document.querySelectorAll('input[name="retention"]').forEach((r) => {
   r.addEventListener('change', () => {
@@ -310,5 +314,10 @@ autostartCheck.addEventListener('change', () => {
 api.onChanged(() => load());
 
 /* ---------- 启动 ---------- */
+
+// 显示当前软件版本号
+api.getVersion().then((res) => {
+  if (res.ok) document.getElementById('versionText').textContent = res.version;
+});
 
 load();

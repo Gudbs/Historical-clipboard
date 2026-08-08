@@ -318,6 +318,8 @@ body {
 .radio-group { display: flex; gap: 12px; }
 .radio-item { font-size: 13px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .switch-line { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.help-btns { display: flex; gap: 8px; }
+.version-line { text-align: center; color: var(--text-sub); font-size: 12px; margin-top: 12px; }
 
 .hidden { display: none !important; }
 
