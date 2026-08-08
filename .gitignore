@@ -1,0 +1,62 @@
+# 项目构建、依赖
+node_modules/
+.next/
+out/
+.pnp/
+.pnp.js
+
+# 环境变量、数据库文件
+.env
+.env.local
+.venv
+*.db
+*.db-wal
+*.db-journal
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# AI 工具本地配置
+.claude/
+.cursor/
+.aider*
+.continue/
+.cody/
+
+# 密钥和凭证
+*.pem
+*.key
+credentials.json
+*.npmrc
+.aws/
+.ssh/
+
+# 日志文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# 编辑器临时文件
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# 临时目录与缓存
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+
+# 测试覆盖率
+coverage/
+
+# 本地打包压缩文件
+*.zip
+*.rar
+*.7z
+*.tar.gz
