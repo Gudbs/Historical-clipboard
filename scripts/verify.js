@@ -69,6 +69,19 @@ app.whenReady().then(async () => {
   store.setRemark(second.id, '我的备注');
   check('备注保存', store.listRecords().find((r) => r.id === second.id).remark === '我的备注');
 
+  // 编辑本条内容（文本）：内容更新 + 去重指纹重算
+  store.editContent(second.id, '第二段文本（已编辑）');
+  const editedRec = store.listRecords().find((r) => r.id === second.id);
+  const expectHash = require('crypto').createHash('sha256').update('第二段文本（已编辑）').digest('hex');
+  const editedHash = db.get('SELECT hash FROM records WHERE id = ?', [second.id]).hash;
+  check('编辑本条内容生效', editedRec.content === '第二段文本（已编辑）');
+  check('编辑后指纹同步重算', editedHash === expectHash);
+
+  // 编辑本条内容（图片）：不支持，内容保持不变
+  const imgContentBefore = store.listRecords().find((r) => r.id === imgRec.id).content;
+  store.editContent(imgRec.id, '尝试修改图片正文');
+  check('图片记录不支持编辑正文', store.listRecords().find((r) => r.id === imgRec.id).content === imgContentBefore);
+
   // 删除图片记录 → 文件被同步清理
   store.deleteRecord(imgRec.id);
   check('删除图片后文件清理', !fs.existsSync(imgFull) && !fs.existsSync(imgThumb));
@@ -151,7 +164,7 @@ app.whenReady().then(async () => {
   })()`);
   check('卡片渲染出「···」按钮', !!ui.hasMoreBtn);
   check('卡片渲染出独立复制按钮', !!ui.hasCopyBtn);
-  check('菜单弹出且包含 3 项', !!ui.menuVisible && ui.itemCount === 3);
+  check('菜单弹出且包含 4 项', !!ui.menuVisible && ui.itemCount === 4);
   check('点击空白处收起菜单', !!ui.menuClosed);
   check('点击复制按钮不报错', !!ui.copyOk);
 

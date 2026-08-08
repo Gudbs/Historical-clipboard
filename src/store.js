@@ -143,6 +143,15 @@ function setRemark(id, remark) {
   notify();
 }
 
+/** 编辑本条记录的内容（文本 / 文件记录的正文）；图片记录不支持编辑正文 */
+function editContent(id, content) {
+  const rec = db.get('SELECT * FROM records WHERE id = ?', [id]);
+  if (!rec || rec.type === 'image') return;
+  db.run('UPDATE records SET content = ?, hash = ?, updated_at = ? WHERE id = ?',
+    [content || '', sha256(content || ''), Date.now(), id]);
+  notify();
+}
+
 /* ---------- 设置 ---------- */
 
 function getSettings() {
@@ -216,6 +225,6 @@ function collectOrphanImages() {
 }
 
 module.exports = {
-  onCaptured, listRecords, copyRecord, setPinned, deleteRecord, setRemark,
+  onCaptured, listRecords, copyRecord, setPinned, deleteRecord, setRemark, editContent,
   getSettings, setSettings, cleanupStart, cleanup, setChangeHandler
 };

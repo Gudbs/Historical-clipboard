@@ -62,6 +62,12 @@ function register(store, { win, quit }) {
     catch (e) { return { ok: false, error: errMsg(e) }; }
   });
 
+  // 编辑本条记录的内容（文本正文；图片记录不支持）
+  ipcMain.handle('clip:editContent', (_e, { id, content }) => {
+    try { store.editContent(id, content || ''); return { ok: true }; }
+    catch (e) { return { ok: false, error: errMsg(e) }; }
+  });
+
   // 读取设置
   ipcMain.handle('clip:getSettings', () => {
     try { return { ok: true, settings: store.getSettings() }; }

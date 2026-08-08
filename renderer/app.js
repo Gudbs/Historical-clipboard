@@ -149,9 +149,10 @@ function createCard(rec) {
   copyBtn.className = 'copy-btn';
   copyBtn.textContent = '📋';
   copyBtn.title = '复制到剪贴板';
-  copyBtn.addEventListener('click', (e) => {
+  copyBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
-    api.copyRecord(rec.id);
+    const res = await api.copyRecord(rec.id);
+    if (res && res.ok) showCopyTip(card);
   });
   meta.appendChild(copyBtn);
 
@@ -186,9 +187,10 @@ function toggleMenu(card, rec, moreBtn) {
     return;
   }
 
-  // 填充三个菜单项
+  // 填充四个菜单项（顺序：编辑备注 → 编辑本条内容 → 置顶/取消置顶 → 删除）
   menu.innerHTML = '';
-  addMenuItem(menu, '编辑内容', () => { hideMenu(); openRemarkModal(rec); });
+  addMenuItem(menu, '编辑备注', () => { hideMenu(); openRemarkModal(rec); });
+  addMenuItem(menu, '编辑本条内容', () => { hideMenu(); openEditContentModal(rec); });
   addMenuItem(menu, rec.pinned ? '取消置顶' : '置顶本条记录', () => { hideMenu(); api.pinRecord(rec.id, !rec.pinned); });
   addMenuItem(menu, '删除本条记录', () => { hideMenu(); api.deleteRecord(rec.id); }, 'danger');
   menu._targetId = rec.id;
@@ -252,7 +254,7 @@ document.querySelectorAll('.modal-mask').forEach((mask) => {
   });
 });
 
-/* ---------- 备注编辑（菜单项「编辑内容」入口） ---------- */
+/* ---------- 备注编辑（菜单项「编辑备注」入口） ---------- */
 
 let remarkTargetId = null;
 
@@ -271,6 +273,46 @@ document.getElementById('remarkCancel').addEventListener('click', () => hideModa
 document.getElementById('remarkInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('remarkSave').click();
 });
+
+/* ---------- 编辑本条内容（菜单项「编辑本条内容」入口） ---------- */
+
+let editContentTargetId = null;
+
+/** 打开「编辑本条内容」弹窗；图片记录不支持编辑正文，给出窗口提示 */
+function openEditContentModal(rec) {
+  if (rec.type === 'image') {
+    alert('图片类型剪贴内容不支持编辑正文');
+    return;
+  }
+  editContentTargetId = rec.id;
+  document.getElementById('editContentInput').value = rec.content || '';
+  showModal('editContentModal');
+  document.getElementById('editContentInput').focus();
+}
+
+document.getElementById('editContentSave').addEventListener('click', async () => {
+  const text = document.getElementById('editContentInput').value;
+  if (!text.trim()) { hideModal('editContentModal'); return; } // 内容为空时不更新
+  await api.editContent(editContentTargetId, text);
+  hideModal('editContentModal');
+});
+document.getElementById('editContentCancel').addEventListener('click', () => hideModal('editContentModal'));
+
+/* ---------- 复制成功提示 ---------- */
+
+/** 复制成功后，在卡片下方显示一行静态文字提示，2 秒后自动消失 */
+function showCopyTip(card) {
+  const old = card.querySelector('.copy-tip');
+  if (old) old.remove();
+  const tip = document.createElement('div');
+  tip.className = 'copy-tip';
+  tip.textContent = '复制成功！';
+  card.appendChild(tip);
+  setTimeout(() => {
+    const el = card.querySelector('.copy-tip');
+    if (el) el.remove();
+  }, 2000);
+}
 
 /* ---------- 设置面板 ---------- */
 

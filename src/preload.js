@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('clipHistory', {
   pinRecord: (id, pinned) => ipcRenderer.invoke('clip:pin', { id, pinned }),
   deleteRecord: (id) => ipcRenderer.invoke('clip:del', { id }),
   setRemark: (id, remark) => ipcRenderer.invoke('clip:remark', { id, remark }),
+  editContent: (id, content) => ipcRenderer.invoke('clip:editContent', { id, content }),
   getSettings: () => ipcRenderer.invoke('clip:getSettings'),
   setSettings: (patch) => ipcRenderer.invoke('clip:setSettings', patch),
   quit: () => ipcRenderer.invoke('clip:quit'),

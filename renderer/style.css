@@ -219,6 +219,14 @@ body {
 }
 .copy-btn:hover { opacity: 1; background: rgba(0, 0, 0, 0.06); }
 
+/* 复制成功提示（卡片下方静态文字） */
+.copy-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #16a34a;
+  text-align: center;
+}
+
 /* ---------- 下拉菜单（「···」右侧弹出） ---------- */
 .dropdown-menu {
   position: fixed;
@@ -286,6 +294,19 @@ body {
   outline: none;
 }
 .modal-input:focus { border-color: var(--primary); }
+.modal-wide { width: 480px; }
+.modal-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+}
+.modal-textarea:focus { border-color: var(--primary); }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
