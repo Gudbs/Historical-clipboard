@@ -92,7 +92,7 @@ body {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 14px 16px 10px;
-  cursor: pointer;
+  cursor: default; /* 点击卡片本身不再触发复制 */
   transition: transform 0.12s ease, box-shadow 0.12s ease;
   overflow: hidden;
 }
@@ -100,7 +100,7 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.08);
 }
-/* 置顶卡片：左侧金色竖条 + 徽章 */
+/* 置顶卡片：左侧金色竖条 */
 .card.pinned {
   border-color: #f3d9a4;
   background: linear-gradient(180deg, #fffdf6, #fff);
@@ -114,16 +114,35 @@ body {
   width: 4px;
   background: var(--gold);
 }
+/* 置顶徽章（位于底部信息行，时间之前） */
 .pin-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   background: #fdf3df;
   color: var(--gold);
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
+  flex: 0 0 auto;
 }
+
+/* ---------- 卡片右上角「···」按钮 ---------- */
+.more-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-sub);
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 2px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s, background 0.12s;
+  z-index: 2;
+}
+.more-btn:hover { opacity: 1; background: rgba(0, 0, 0, 0.06); }
 
 /* 文本预览 */
 .text-preview {
@@ -135,7 +154,7 @@ body {
   -webkit-line-clamp: 3;   /* 最多显示 3 行 */
   -webkit-box-orient: vertical;
   overflow: hidden;
-  padding-right: 44px;     /* 给置顶徽章留空间 */
+  padding-right: 52px;     /* 给右上角「···」按钮留空间 */
 }
 
 /* 图片缩略图 */
@@ -184,24 +203,49 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.card-actions {
-  display: flex;
-  gap: 4px;
-  flex: 0 0 auto;
-}
-.card-actions button {
+
+/* 卡片内的独立复制按钮（仅手动点击才复制） */
+.copy-btn {
   border: none;
   background: transparent;
-  font-size: 15px;
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
   border-radius: 6px;
   padding: 4px 6px;
-  opacity: 0.45;
+  opacity: 0.5;
   transition: opacity 0.12s, background 0.12s;
+  flex: 0 0 auto;
 }
-.card-actions button:hover { opacity: 1; background: rgba(0, 0, 0, 0.06); }
-.card-actions .btn-del:hover { background: rgba(229, 72, 77, 0.12); }
-.card-actions .btn-del.confirming { opacity: 1; background: rgba(229, 72, 77, 0.18); color: var(--danger); }
+.copy-btn:hover { opacity: 1; background: rgba(0, 0, 0, 0.06); }
+
+/* ---------- 下拉菜单（「···」右侧弹出） ---------- */
+.dropdown-menu {
+  position: fixed;
+  min-width: 160px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  z-index: 300;
+}
+.menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.menu-item:hover { background: var(--bg); }
+.menu-item.danger { color: var(--danger); }
+.menu-item.danger:hover { background: rgba(229, 72, 77, 0.12); }
 
 /* ---------- 空状态 ---------- */
 .empty {

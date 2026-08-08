@@ -1,6 +1,12 @@
 /**
  * 界面逻辑：拉取记录列表、渲染卡片、搜索筛选、卡片操作、设置面板。
  * 只能通过 window.clipHistory（preload.js 暴露）与主进程通信。
+ *
+ * 卡片交互（本次改造后）：
+ *   - 卡片右上角「···」→ 点击在按钮右侧弹出下拉菜单（编辑内容 / 置顶 / 删除）
+ *   - 卡片内部「📋」复制按钮 → 只有手动点击它才把本条记录复制到剪贴板
+ *   - 点击页面空白处或滚动窗口 → 收起下拉菜单
+ *   - 点击卡片其他位置：不再触发复制
  */
 const api = window.clipHistory;
 
@@ -60,7 +66,7 @@ function createCard(rec) {
   card.className = 'card' + (rec.pinned ? ' pinned' : '');
   card.dataset.id = rec.id;
 
-  // —— 卡片主体 ——
+  // —— 卡片主体（文本 / 图片 / 文件）——
   const body = document.createElement('div');
   body.className = 'card-body';
 
@@ -103,9 +109,27 @@ function createCard(rec) {
   }
   card.appendChild(body);
 
-  // —— 底部信息行：时间 + 备注 + 操作按钮 ——
+  // —— 右上角「···」更多操作按钮 ——
+  const moreBtn = document.createElement('button');
+  moreBtn.className = 'more-btn';
+  moreBtn.textContent = '···';
+  moreBtn.title = '更多操作';
+  moreBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu(card, rec, moreBtn);
+  });
+  card.appendChild(moreBtn);
+
+  // —— 底部信息行：置顶徽章 + 时间 + 备注 + 复制按钮 ——
   const meta = document.createElement('div');
   meta.className = 'card-meta';
+
+  if (rec.pinned) {
+    const badge = document.createElement('span');
+    badge.className = 'pin-badge';
+    badge.textContent = '已置顶';
+    meta.appendChild(badge);
+  }
 
   const time = document.createElement('span');
   time.className = 'time';
@@ -120,46 +144,85 @@ function createCard(rec) {
     meta.appendChild(rm);
   }
 
-  const actions = document.createElement('div');
-  actions.className = 'card-actions';
-  actions.appendChild(actionBtn('✏️', '备注', () => openRemarkModal(rec)));
-  actions.appendChild(actionBtn('📌', rec.pinned ? '取消置顶' : '置顶', () => api.pinRecord(rec.id, !rec.pinned)));
-  actions.appendChild(actionBtn('🗑️', '删除', async (e) => {
+  // 独立的复制按钮：只有手动点它才复制本条到剪贴板
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'copy-btn';
+  copyBtn.textContent = '📋';
+  copyBtn.title = '复制到剪贴板';
+  copyBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    const btn = e.currentTarget;
-    // 防误删：第一次点击进入确认状态，第二次才真正删除
-    if (!btn.classList.contains('confirming')) {
-      btn.classList.add('confirming');
-      btn.textContent = '确认删除';
-      setTimeout(() => { btn.classList.remove('confirming'); btn.textContent = '🗑️'; }, 1500);
-      return;
-    }
-    await api.deleteRecord(rec.id);
-  }));
-  meta.appendChild(actions);
+    api.copyRecord(rec.id);
+  });
+  meta.appendChild(copyBtn);
+
   card.appendChild(meta);
-
-  // 置顶徽章
-  if (rec.pinned) {
-    const badge = document.createElement('span');
-    badge.className = 'pin-badge';
-    badge.textContent = '已置顶';
-    card.appendChild(badge);
-  }
-
-  // 点击卡片 → 重新复制到系统剪贴板
-  card.addEventListener('click', () => api.copyRecord(rec.id));
   return card;
 }
 
-/** 创建操作小按钮（点击时阻止事件冒泡，避免触发卡片复制） */
-function actionBtn(text, title, onClick) {
-  const btn = document.createElement('button');
-  btn.textContent = text;
-  btn.title = title;
-  btn.addEventListener('click', onClick);
-  return btn;
+/* ---------- 下拉菜单（全局单例） ---------- */
+
+let menuEl = null;
+
+/** 确保下拉菜单元素存在（只创建一次） */
+function ensureMenu() {
+  if (menuEl) return menuEl;
+  menuEl = document.createElement('div');
+  menuEl.className = 'dropdown-menu hidden';
+  document.body.appendChild(menuEl);
+  return menuEl;
 }
+
+/** 收起下拉菜单 */
+function hideMenu() {
+  if (menuEl) menuEl.classList.add('hidden');
+}
+
+/** 在「···」按钮右侧弹出本条记录的下拉菜单 */
+function toggleMenu(card, rec, moreBtn) {
+  const menu = ensureMenu();
+  // 菜单已打开且属于同一张卡片 → 再次点击收起
+  if (menu._targetId === rec.id && !menu.classList.contains('hidden')) {
+    hideMenu();
+    return;
+  }
+
+  // 填充三个菜单项
+  menu.innerHTML = '';
+  addMenuItem(menu, '编辑内容', () => { hideMenu(); openRemarkModal(rec); });
+  addMenuItem(menu, rec.pinned ? '取消置顶' : '置顶本条记录', () => { hideMenu(); api.pinRecord(rec.id, !rec.pinned); });
+  addMenuItem(menu, '删除本条记录', () => { hideMenu(); api.deleteRecord(rec.id); }, 'danger');
+  menu._targetId = rec.id;
+
+  // 定位：紧贴「···」按钮右侧；超出窗口右边缘时改放左侧
+  const rect = moreBtn.getBoundingClientRect();
+  const menuWidth = 160;
+  let left = rect.right + 4;
+  if (left + menuWidth > window.innerWidth - 8) left = rect.left - menuWidth - 4;
+  menu.style.left = Math.max(8, left) + 'px';
+  menu.style.top = rect.top + 'px';
+
+  menu.classList.remove('hidden');
+}
+
+/** 添加一个下拉菜单项 */
+function addMenuItem(menu, label, onClick, extraClass) {
+  const item = document.createElement('button');
+  item.className = 'menu-item' + (extraClass ? ' ' + extraClass : '');
+  item.textContent = label;
+  item.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  menu.appendChild(item);
+}
+
+// 点击页面任意空白处收起菜单
+document.addEventListener('click', (e) => {
+  if (menuEl && !menuEl.contains(e.target)) hideMenu();
+});
+// 滚动或改变窗口大小时收起菜单（防止菜单错位）
+window.addEventListener('scroll', hideMenu, true);
+window.addEventListener('resize', hideMenu);
 
 /* ---------- 时间格式化 ---------- */
 
@@ -189,7 +252,7 @@ document.querySelectorAll('.modal-mask').forEach((mask) => {
   });
 });
 
-/* ---------- 备注编辑 ---------- */
+/* ---------- 备注编辑（菜单项「编辑内容」入口） ---------- */
 
 let remarkTargetId = null;
 

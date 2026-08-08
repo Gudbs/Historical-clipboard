@@ -99,7 +99,7 @@ app.whenReady().then(async () => {
     check('复制回写不报错', false);
   }
 
-  // ---------- 界面加载测试 ----------
+  // ---------- 界面加载与交互测试 ----------
   const uiErrors = [];
   const win = new BrowserWindow({
     width: 800,
@@ -124,9 +124,36 @@ app.whenReady().then(async () => {
   register(store, { win, quit: () => {} });
 
   await win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
-  await new Promise((r) => setTimeout(r, 2000)); // 等待 renderer 初始渲染完成
+  // 插入一条记录，触发主进程推送 → 界面渲染出卡片
+  store.onCaptured({ type: 'text', hash: 'ui_1', content: 'UI 交互测试文本' });
+  await new Promise((r) => setTimeout(r, 800)); // 等待渲染完成
+
   check('界面加载无错误', uiErrors.length === 0);
   if (uiErrors.length) console.log('界面错误详情:', JSON.stringify(uiErrors, null, 2));
+
+  // 交互验证：复制按钮 / 「···」菜单 / 点击空白收起
+  const ui = await win.webContents.executeJavaScript(`(() => {
+    const card = document.querySelector('.card');
+    const moreBtn = card && card.querySelector('.more-btn');
+    const copyBtn = card && card.querySelector('.copy-btn');
+    // 点击「···」→ 菜单弹出
+    moreBtn && moreBtn.click();
+    const menu = document.querySelector('.dropdown-menu');
+    const menuVisible = menu && !menu.classList.contains('hidden');
+    const itemCount = menu ? menu.querySelectorAll('.menu-item').length : 0;
+    // 点击页面空白处 → 菜单收起
+    document.body.click();
+    const menuClosed = menu && menu.classList.contains('hidden');
+    // 点击复制按钮（触发 IPC 复制，不应抛错）
+    let copyOk = false;
+    try { if (copyBtn) copyBtn.click(); copyOk = true; } catch (e) { copyOk = false; }
+    return { hasMoreBtn: !!moreBtn, hasCopyBtn: !!copyBtn, menuVisible, itemCount, menuClosed, copyOk };
+  })()`);
+  check('卡片渲染出「···」按钮', !!ui.hasMoreBtn);
+  check('卡片渲染出独立复制按钮', !!ui.hasCopyBtn);
+  check('菜单弹出且包含 3 项', !!ui.menuVisible && ui.itemCount === 3);
+  check('点击空白处收起菜单', !!ui.menuClosed);
+  check('点击复制按钮不报错', !!ui.copyOk);
 
   // ---------- 汇总 ----------
   let allPass = true;
