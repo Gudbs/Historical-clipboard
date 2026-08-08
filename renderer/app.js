@@ -195,11 +195,11 @@ function toggleMenu(card, rec, moreBtn) {
   addMenuItem(menu, '删除本条记录', () => { hideMenu(); api.deleteRecord(rec.id); }, 'danger');
   menu._targetId = rec.id;
 
-  // 定位：紧贴「···」按钮右侧；超出窗口右边缘时改放左侧
+  // 定位：紧贴「···」按钮右侧弹出（顶部与按钮对齐）；超出窗口右边缘时改放左侧
   const rect = moreBtn.getBoundingClientRect();
   const menuWidth = 160;
-  let left = rect.right + 4;
-  if (left + menuWidth > window.innerWidth - 8) left = rect.left - menuWidth - 4;
+  let left = rect.right;
+  if (left + menuWidth > window.innerWidth - 8) left = rect.left - menuWidth;
   menu.style.left = Math.max(8, left) + 'px';
   menu.style.top = rect.top + 'px';
 
@@ -300,6 +300,8 @@ document.getElementById('editContentCancel').addEventListener('click', () => hid
 
 /* ---------- 复制成功提示 ---------- */
 
+let copyTipTimer = null; // 全局唯一的隐藏定时器，防止连续复制时旧定时器误删新提示
+
 /** 复制成功后，在卡片下方显示一行静态文字提示，2 秒后自动消失 */
 function showCopyTip(card) {
   const old = card.querySelector('.copy-tip');
@@ -308,7 +310,8 @@ function showCopyTip(card) {
   tip.className = 'copy-tip';
   tip.textContent = '复制成功！';
   card.appendChild(tip);
-  setTimeout(() => {
+  clearTimeout(copyTipTimer);
+  copyTipTimer = setTimeout(() => {
     const el = card.querySelector('.copy-tip');
     if (el) el.remove();
   }, 2000);

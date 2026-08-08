@@ -144,8 +144,8 @@ app.whenReady().then(async () => {
   check('界面加载无错误', uiErrors.length === 0);
   if (uiErrors.length) console.log('界面错误详情:', JSON.stringify(uiErrors, null, 2));
 
-  // 交互验证：复制按钮 / 「···」菜单 / 点击空白收起
-  const ui = await win.webContents.executeJavaScript(`(() => {
+  // 交互验证：复制按钮 / 「···」菜单（紧贴定位）/ 点击空白收起 / 复制成功提示
+  const ui = await win.webContents.executeJavaScript(`(async () => {
     const card = document.querySelector('.card');
     const moreBtn = card && card.querySelector('.more-btn');
     const copyBtn = card && card.querySelector('.copy-btn');
@@ -154,19 +154,31 @@ app.whenReady().then(async () => {
     const menu = document.querySelector('.dropdown-menu');
     const menuVisible = menu && !menu.classList.contains('hidden');
     const itemCount = menu ? menu.querySelectorAll('.menu-item').length : 0;
+    // 菜单紧贴按钮：顶部对齐，且左边缘贴按钮右缘（或超出窗口时贴左缘）
+    const rect = moreBtn ? moreBtn.getBoundingClientRect() : null;
+    const menuLeft = menu ? parseFloat(menu.style.left) : NaN;
+    const menuW = menu ? (menu.offsetWidth || 160) : 160;
+    const topAligned = menuVisible && rect && menu ? Math.abs(parseFloat(menu.style.top) - rect.top) < 1 : false;
+    const flushRight = !isNaN(menuLeft) && rect ? Math.abs(menuLeft - rect.right) < 1 : false;
+    const flushLeft = !isNaN(menuLeft) && rect ? Math.abs(menuLeft - (rect.left - menuW)) < 1 : false;
+    const flushAligned = menuVisible && (flushRight || flushLeft);
     // 点击页面空白处 → 菜单收起
     document.body.click();
     const menuClosed = menu && menu.classList.contains('hidden');
-    // 点击复制按钮（触发 IPC 复制，不应抛错）
+    // 点击复制按钮（触发 IPC 复制，不应抛错），稍等后检查「复制成功！」提示
     let copyOk = false;
     try { if (copyBtn) copyBtn.click(); copyOk = true; } catch (e) { copyOk = false; }
-    return { hasMoreBtn: !!moreBtn, hasCopyBtn: !!copyBtn, menuVisible, itemCount, menuClosed, copyOk };
+    await new Promise((r) => setTimeout(r, 200));
+    const tipShown = !!card && !!card.querySelector('.copy-tip');
+    return { hasMoreBtn: !!moreBtn, hasCopyBtn: !!copyBtn, menuVisible, itemCount, topAligned, flushAligned, menuClosed, copyOk, tipShown };
   })()`);
   check('卡片渲染出「···」按钮', !!ui.hasMoreBtn);
   check('卡片渲染出独立复制按钮', !!ui.hasCopyBtn);
   check('菜单弹出且包含 4 项', !!ui.menuVisible && ui.itemCount === 4);
+  check('菜单紧贴按钮弹出（顶部对齐 / 左右贴合）', !!ui.topAligned && !!ui.flushAligned);
   check('点击空白处收起菜单', !!ui.menuClosed);
   check('点击复制按钮不报错', !!ui.copyOk);
+  check('复制成功后显示「复制成功！」提示', !!ui.tipShown);
 
   // ---------- 汇总 ----------
   let allPass = true;
