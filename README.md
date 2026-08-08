@@ -1,0 +1,65 @@
+# ClipHistory · Windows 剪贴板历史记录工具
+
+一个**全程离线**的本地剪贴板历史工具：自动记录你复制过的文本、图片和文件，随时找回、重新复制。数据只保存在你自己的电脑里，**不联网、不上传任何剪贴板数据**。
+
+## 功能
+
+- 实时捕获剪贴板：纯文本、截图图片、网页图片、资源管理器复制的文件
+- 卡片式列表，按复制时间倒序展示（最新在最上）
+- 点击卡片一键重新复制到剪贴板，直接 `Ctrl+V` 粘贴使用
+- 置顶：重要记录固定在列表最顶端，不被新记录挤下去
+- 单条删除、添加备注、关键词实时搜索
+- 自动清理过期记录（留存 1 / 3 / 5 天可选），**置顶记录不会被清理**
+- 关闭窗口后最小化到系统托盘，后台静默监听
+- 开机自启、本地数据库持久化，重启软件数据不丢失
+
+## 技术栈
+
+- [Electron](https://www.electronjs.org/) + 原生 HTML/CSS/JS（无构建步骤，零原生编译依赖）
+- [sql.js](https://sql.js.org/)（SQLite 编译为 WASM，纯 JS 数据库）
+- [electron-builder](https://www.electron.build/) 打包 Windows 安装包
+
+## 目录结构
+
+```
+├─ src/                 # 主进程
+│  ├─ main.js           # 入口：窗口、协议、生命周期
+│  ├─ preload.js        # 安全桥：window.clipHistory
+│  ├─ db.js             # sql.js 数据层
+│  ├─ store.js          # 业务逻辑（去重/回写/置顶/清理）
+│  ├─ clipboard-monitor.js  # 剪贴板轮询监听
+│  ├─ ipc.js            # 主进程 IPC
+│  └─ tray.js           # 系统托盘
+├─ renderer/            # 界面
+│  ├─ index.html        # 页面
+│  ├─ style.css         # 样式
+│  └─ app.js            # 界面逻辑
+├─ build/               # 图标
+├─ scripts/             # 工具脚本（图标生成、自动验证）
+└─ docs/教程.md         # 零基础分步教程
+```
+
+## 快速开始
+
+环境要求：**Node.js 18 及以上**（官网 https://nodejs.org/ 下载 LTS 版）
+
+```bash
+npm install        # 安装依赖（已配置国内镜像加速）
+npm start          # 本地启动测试
+npm run dist       # 打包 Windows 安装包（输出到 dist/ 目录）
+```
+
+> 小白用户请务必阅读 [docs/教程.md](docs/教程.md)，每一步都有详细图文说明。
+
+## 数据与隐私
+
+- 数据库与图片保存在：`C:\Users\你的用户名\AppData\Roaming\ClipHistory\`
+- 卸载软件不会自动删除该目录（保留你的历史数据）
+- 彻底清除数据：退出软件后删除上面的文件夹即可
+- 本项目代码**不包含任何网络请求**，渲染页面还设置了 CSP 白名单禁止加载远程内容
+
+## 验证
+
+```bash
+npx electron scripts/verify.js   # 自动验证核心逻辑与界面加载（全部通过退出码 0）
+```

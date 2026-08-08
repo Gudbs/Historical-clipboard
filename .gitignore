@@ -2,6 +2,12 @@
 node_modules/
 .next/
 out/
+
+# 打包输出目录（electron-builder）
+dist/
+
+# 运行时数据（本机剪贴板历史）
+data/
 .pnp/
 .pnp.js
 
