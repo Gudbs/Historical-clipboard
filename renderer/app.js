@@ -81,6 +81,11 @@ function createCard(rec) {
     img.loading = 'lazy';
     img.alt = '图片';
     img.src = 'clipimg://thumb_' + rec.image_name; // 自定义协议读取本地缩略图
+    img.title = '点击放大预览';
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openPreview(rec);
+    });
     body.appendChild(img);
   } else if (rec.type === 'files') {
     let names = [];
@@ -192,7 +197,7 @@ function toggleMenu(card, rec, moreBtn) {
   addMenuItem(menu, '编辑备注', () => { hideMenu(); openRemarkModal(rec); });
   addMenuItem(menu, '编辑本条内容', () => { hideMenu(); openEditContentModal(rec); });
   addMenuItem(menu, rec.pinned ? '取消置顶' : '置顶本条记录', () => { hideMenu(); api.pinRecord(rec.id, !rec.pinned); });
-  addMenuItem(menu, '删除本条记录', () => { hideMenu(); api.deleteRecord(rec.id); }, 'danger');
+  addMenuItem(menu, '删除本条记录', () => { hideMenu(); askDelete(rec.id); }, 'danger');
   menu._targetId = rec.id;
 
   // 定位：紧贴「···」按钮右侧弹出（顶部与按钮对齐）；超出窗口右边缘时改放左侧
@@ -278,10 +283,10 @@ document.getElementById('remarkInput').addEventListener('keydown', (e) => {
 
 let editContentTargetId = null;
 
-/** 打开「编辑本条内容」弹窗；图片记录不支持编辑正文，给出窗口提示 */
+/** 打开「编辑本条内容」弹窗；图片记录不支持编辑正文，弹出风格一致的提示窗口 */
 function openEditContentModal(rec) {
   if (rec.type === 'image') {
-    alert('图片类型剪贴内容不支持编辑正文');
+    showNotice('图片类型剪贴内容不支持编辑正文');
     return;
   }
   editContentTargetId = rec.id;
@@ -316,6 +321,97 @@ function showCopyTip(card) {
     if (el) el.remove();
   }, 2000);
 }
+
+/* ---------- 通用提示弹窗（风格与编辑备注一致） ---------- */
+
+function showNotice(text) {
+  document.getElementById('noticeText').textContent = text;
+  showModal('noticeModal');
+}
+document.getElementById('noticeOk').addEventListener('click', () => hideModal('noticeModal'));
+
+/* ---------- 图片预览（点击缩略图放大查看，支持按钮缩放 / 滚轮缩放 / 拖拽平移） ---------- */
+
+let previewZoom = 1;
+let previewX = 0;      // 图片平移量（屏幕像素，不随缩放变化）
+let previewY = 0;
+let previewDrag = null; // 拖拽起点：{ startX, startY, origX, origY }
+
+function openPreview(rec) {
+  previewZoom = 1;
+  previewX = 0;
+  previewY = 0;
+  document.getElementById('previewImg').src = 'clipimg://' + rec.image_name; // 原图（非缩略图）
+  applyPreviewZoom();
+  showModal('previewModal');
+}
+
+function applyPreviewZoom() {
+  const img = document.getElementById('previewImg');
+  // translate 在 scale 之后应用 → 平移量即屏幕像素，拖拽手感不受缩放影响
+  img.style.transform = 'translate(' + previewX + 'px, ' + previewY + 'px) scale(' + previewZoom + ')';
+  document.getElementById('previewZoomText').textContent = Math.round(previewZoom * 100) + '%';
+}
+
+document.getElementById('zoomIn').addEventListener('click', () => {
+  previewZoom = Math.min(previewZoom + 0.2, 3);   // 最大放大 300%
+  applyPreviewZoom();
+});
+document.getElementById('zoomOut').addEventListener('click', () => {
+  previewZoom = Math.max(previewZoom - 0.2, 0.25); // 最小缩小到 25%
+  applyPreviewZoom();
+});
+document.getElementById('previewClose').addEventListener('click', () => hideModal('previewModal'));
+
+// —— 滚轮缩放：围绕鼠标位置缩放（passive:false 以便阻止容器滚动）——
+const previewBox = document.querySelector('.preview-box');
+previewBox.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const newZoom = Math.min(3, Math.max(0.25, previewZoom * factor));
+  const ratio = newZoom / previewZoom;
+  // 鼠标相对图片当前中心的偏移 → 缩放后保持光标下的图片点不动
+  const imgRect = document.getElementById('previewImg').getBoundingClientRect();
+  const dX = e.clientX - (imgRect.left + imgRect.width / 2);
+  const dY = e.clientY - (imgRect.top + imgRect.height / 2);
+  previewX += (1 - ratio) * dX;
+  previewY += (1 - ratio) * dY;
+  previewZoom = newZoom;
+  applyPreviewZoom();
+});
+
+// —— 鼠标拖拽平移图片 ——
+previewBox.addEventListener('mousedown', (e) => {
+  previewDrag = { startX: e.clientX, startY: e.clientY, origX: previewX, origY: previewY };
+  previewBox.classList.add('dragging');
+  e.preventDefault();
+});
+window.addEventListener('mousemove', (e) => {
+  if (!previewDrag) return;
+  previewX = previewDrag.origX + (e.clientX - previewDrag.startX);
+  previewY = previewDrag.origY + (e.clientY - previewDrag.startY);
+  applyPreviewZoom();
+});
+window.addEventListener('mouseup', () => {
+  if (previewDrag) {
+    previewDrag = null;
+    previewBox.classList.remove('dragging');
+  }
+});
+
+/* ---------- 删除确认弹窗（「确定」为红色警告色） ---------- */
+
+let confirmDeleteId = null;
+
+function askDelete(id) {
+  confirmDeleteId = id;
+  showModal('confirmModal');
+}
+document.getElementById('confirmOk').addEventListener('click', async () => {
+  await api.deleteRecord(confirmDeleteId);
+  hideModal('confirmModal');
+});
+document.getElementById('confirmCancel').addEventListener('click', () => hideModal('confirmModal'));
 
 /* ---------- 设置面板 ---------- */
 

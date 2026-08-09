@@ -180,6 +180,79 @@ app.whenReady().then(async () => {
   check('点击复制按钮不报错', !!ui.copyOk);
   check('复制成功后显示「复制成功！」提示', !!ui.tipShown);
 
+  // 插入一条图片记录 → 渲染出图片卡片，验证预览 / 提示弹窗 / 删除确认
+  store.onCaptured({ type: 'image', hash: 'ui_img', image: nativeImage.createFromBuffer(PNG_1PX) });
+  await new Promise((r) => setTimeout(r, 400));
+
+  const ui2 = await win.webContents.executeJavaScript(`(async () => {
+    const thumb = document.querySelector('.card .thumb');
+    const imgCard = thumb ? thumb.closest('.card') : null;
+    const imgThumb = imgCard && imgCard.querySelector('.thumb');
+    // 点击图片缩略图 → 打开预览弹窗
+    imgThumb && imgThumb.click();
+    const previewShown = !document.getElementById('previewModal').classList.contains('hidden');
+    // 点击放大按钮 → 缩放比例变化
+    const zoomBefore = document.getElementById('previewZoomText').textContent;
+    document.getElementById('zoomIn').click();
+    const zoomAfter = document.getElementById('previewZoomText').textContent;
+    const zoomChanged = zoomBefore !== zoomAfter;
+    // 关闭预览弹窗
+    document.getElementById('previewClose').click();
+    const previewClosed = document.getElementById('previewModal').classList.contains('hidden');
+    // 图片卡片「···」菜单 → 第 2 项「编辑本条内容」→ 弹出风格一致的提示
+    const moreBtn = imgCard && imgCard.querySelector('.more-btn');
+    moreBtn && moreBtn.click();
+    const items = document.querySelectorAll('.dropdown-menu .menu-item');
+    items[1] && items[1].click();
+    const noticeShown = !document.getElementById('noticeModal').classList.contains('hidden');
+    const noticeText = document.getElementById('noticeText').textContent;
+    document.getElementById('noticeOk').click();
+    const noticeClosed = document.getElementById('noticeModal').classList.contains('hidden');
+    // 图片卡片「···」菜单 → 第 4 项「删除本条记录」→ 确认弹窗（红色确定按钮）
+    moreBtn && moreBtn.click();
+    const items2 = document.querySelectorAll('.dropdown-menu .menu-item');
+    items2[3] && items2[3].click();
+    const confirmShown = !document.getElementById('confirmModal').classList.contains('hidden');
+    const confirmDanger = document.getElementById('confirmOk').classList.contains('btn-danger');
+    // 点「取消」→ 弹窗关闭，图片卡片仍在
+    document.getElementById('confirmCancel').click();
+    const confirmClosed = document.getElementById('confirmModal').classList.contains('hidden');
+    const cardStillThere = !!document.querySelector('.card .thumb');
+    return { previewShown, zoomChanged, previewClosed, noticeShown, noticeText, noticeClosed, confirmShown, confirmDanger, confirmClosed, cardStillThere };
+  })()`);
+  check('点击图片缩略图打开预览弹窗', !!ui2.previewShown);
+  check('预览弹窗支持放大缩放', !!ui2.zoomChanged);
+  check('预览弹窗可关闭', !!ui2.previewClosed);
+  check('图片记录编辑本条内容弹出风格一致提示', !!ui2.noticeShown && ui2.noticeText === '图片类型剪贴内容不支持编辑正文');
+  check('提示弹窗可关闭', !!ui2.noticeClosed);
+  check('删除前弹出确认窗口', !!ui2.confirmShown);
+  check('删除确认按钮为红色警告色', !!ui2.confirmDanger);
+  check('取消删除后弹窗关闭且卡片仍在', !!ui2.confirmClosed && !!ui2.cardStillThere);
+
+  // 预览弹窗：滚轮缩放 + 鼠标拖拽平移
+  const ui3 = await win.webContents.executeJavaScript(`(async () => {
+    const thumb = document.querySelector('.card .thumb');
+    const imgCard = thumb ? thumb.closest('.card') : null;
+    const box = document.getElementById('previewModal').querySelector('.preview-box');
+    const img = document.getElementById('previewImg');
+    imgCard && imgCard.querySelector('.thumb').click();
+    const opened = !document.getElementById('previewModal').classList.contains('hidden');
+    // 滚轮缩放（deltaY<0 放大）
+    const zBefore = document.getElementById('previewZoomText').textContent;
+    box.dispatchEvent(new WheelEvent('wheel', { deltaY: -120, bubbles: true, cancelable: true, clientX: 200, clientY: 200 }));
+    const wheelZoomed = zBefore !== document.getElementById('previewZoomText').textContent;
+    // 鼠标拖拽平移（mousedown → mousemove → mouseup）
+    const tBefore = img.style.transform;
+    box.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: 100, clientY: 100 }));
+    window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 140, clientY: 130 }));
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    const dragged = tBefore !== img.style.transform;
+    document.getElementById('previewClose').click();
+    return { opened, wheelZoomed, dragged };
+  })()`);
+  check('滚轮缩放预览图片', !!ui3.opened && !!ui3.wheelZoomed);
+  check('鼠标拖拽移动预览图片', !!ui3.opened && !!ui3.dragged);
+
   // ---------- 汇总 ----------
   let allPass = true;
   for (const r of results) {

@@ -57,6 +57,44 @@
     </div>
   </div>
 
+  <!-- 通用提示弹窗（风格与编辑备注一致，如：图片不支持编辑正文） -->
+  <div id="noticeModal" class="modal-mask hidden">
+    <div class="modal">
+      <h3 class="modal-title">提示</h3>
+      <p id="noticeText" class="modal-text"></p>
+      <div class="modal-actions">
+        <button id="noticeOk" class="btn btn-primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图片预览弹窗（点击图片缩略图打开，支持缩放） -->
+  <div id="previewModal" class="modal-mask hidden">
+    <div class="preview-wrap">
+      <div class="preview-box">
+        <img id="previewImg" class="preview-img" alt="图片预览" draggable="false">
+      </div>
+      <div class="preview-toolbar">
+        <button id="zoomOut" class="btn btn-ghost" title="缩小">−</button>
+        <span id="previewZoomText" class="preview-zoom-text">100%</span>
+        <button id="zoomIn" class="btn btn-ghost" title="放大">＋</button>
+        <button id="previewClose" class="btn btn-ghost">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 删除确认弹窗（「确定」为红色警告色） -->
+  <div id="confirmModal" class="modal-mask hidden">
+    <div class="modal">
+      <h3 class="modal-title">删除记录</h3>
+      <p class="modal-text">确定要删除这条记录吗？删除后不可恢复。</p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="btn btn-ghost">取消</button>
+        <button id="confirmOk" class="btn btn-danger">确定</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 设置弹窗 -->
   <div id="settingsModal" class="modal-mask hidden">
     <div class="modal">

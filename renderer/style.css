@@ -157,7 +157,7 @@ body {
   padding-right: 52px;     /* 给右上角「···」按钮留空间 */
 }
 
-/* 图片缩略图 */
+/* 图片缩略图（点击可放大预览） */
 .thumb {
   display: block;
   max-width: 100%;
@@ -165,6 +165,7 @@ body {
   border-radius: 8px;
   background: #f0f1f4;
   border: 1px solid var(--border);
+  cursor: zoom-in;
 }
 
 /* 文件卡片 */
@@ -325,6 +326,61 @@ body {
 .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
 .btn-primary:hover { background: var(--primary-dark); }
 .btn-ghost:hover { background: #f4f5f7; }
+/* 红色警告按钮（删除确认） */
+.btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn-danger:hover { background: #d1353a; }
+/* 弹窗正文 */
+.modal-text { font-size: 14px; color: var(--text); line-height: 1.7; }
+
+/* 图片预览弹窗 */
+.preview-wrap {
+  max-width: 92vw;
+  max-height: 88vh;
+  background: rgba(22, 24, 28, 0.95);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+.preview-box {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;             /* 放大后可滚动查看局部 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #0d0e11;
+  cursor: grab;
+}
+.preview-box.dragging { cursor: grabbing; }
+.preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.15s ease;
+}
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.preview-toolbar .btn {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+.preview-toolbar .btn:hover { background: rgba(255, 255, 255, 0.24); }
+.preview-zoom-text {
+  color: #d7dbe0;
+  font-size: 13px;
+  min-width: 46px;
+  text-align: center;
+}
 
 /* 设置项 */
 .setting-row {
