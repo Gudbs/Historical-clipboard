@@ -29,17 +29,25 @@ async function load() {
   }
 }
 
+/** 取出文件记录的文件名列表（数据库里存的是 JSON 字符串） */
+function fileNamesOf(rec) {
+  try { return JSON.parse(rec.file_names || '[]'); } catch (e) { return []; }
+}
+
+/** 一条记录里所有可被搜索的文字：正文（文件记录即路径列表）+ 备注 */
+function searchTextOf(rec) {
+  return [(rec.content || ''), (rec.remark || '')].join('\n').toLowerCase();
+}
+
 /** 应用搜索关键词，过滤后渲染 */
 function applyFilter() {
   const q = searchInput.value.trim().toLowerCase();
   if (!q) {
     filtered = records;
   } else {
-    // 文本按内容检索；图片 / 文件按备注检索
-    filtered = records.filter((r) => {
-      if (r.type === 'text') return (r.content || '').toLowerCase().includes(q);
-      return (r.remark || '').toLowerCase().includes(q);
-    });
+    // 所有类型统一检索：正文 / 备注都能命中
+    // （文本按内容，文件按路径与文件名，图片按备注，且备注对任何类型都生效）
+    filtered = records.filter((r) => searchTextOf(r).includes(q));
   }
   render();
 }
@@ -88,8 +96,7 @@ function createCard(rec) {
     });
     body.appendChild(img);
   } else if (rec.type === 'files') {
-    let names = [];
-    try { names = JSON.parse(rec.file_names || '[]'); } catch (e) { names = []; }
+    const names = fileNamesOf(rec);
     const wrap = document.createElement('div');
     wrap.className = 'file-card';
     const icon = document.createElement('span');
@@ -454,11 +461,99 @@ autostartCheck.addEventListener('change', () => {
 
 api.onChanged(() => load());
 
+/* ---------- 更新说明（点击设置面板底部版本号查看） ---------- */
+
+// 更新日志数据：从新到旧排列，发新版时在最前面加一条即可
+const CHANGELOG = [
+  {
+    version: '1.2.5',
+    items: [
+      '修复：给文本记录加了备注后，用备注搜索却搜不到这张卡片（现在「正文 + 备注」统一检索）',
+      '修复：复制的文件卡片搜不到，现在可以按文件名、文件路径搜索',
+      '修复：编辑文本内容时不再显示红色波浪线的拼写错误提示，只显示纯文本',
+      '新增：点击设置面板底部的版本号，可查看当前版本及历史版本的更新内容'
+    ]
+  },
+  {
+    version: '1.2.4',
+    items: [
+      '图片记录点击「编辑本条内容」时的不支持提示，改为与编辑备注一致的弹窗风格',
+      '新增图片预览：点击缩略图即可放大查看原图，支持按钮缩放、滚轮缩放、拖拽移动',
+      '新增删除确认：删除前先弹确认窗口，「确定」为红色警告色'
+    ]
+  },
+  {
+    version: '1.2.3',
+    items: [
+      '修复：「···」下拉菜单紧贴按钮右侧弹出，顶部与按钮对齐',
+      '修复：点击「📋」复制成功后，卡片底部显示「复制成功！」提示，2 秒后自动消失'
+    ]
+  },
+  {
+    version: '1.2.2',
+    items: [
+      '「···」菜单新增「编辑本条内容」：可修改文本记录的剪贴板原文',
+      '原「编辑内容」更名为「编辑备注」，菜单顺序调整为：编辑备注 → 编辑本条内容 → 置顶本条记录 → 删除本条记录'
+    ]
+  },
+  {
+    version: '1.2.1',
+    items: [
+      '设置面板新增「帮助文档」按钮：一键打开 README.md 与 docs/教程.md',
+      '设置面板底部显示当前软件版本号'
+    ]
+  },
+  {
+    version: '1.2.0',
+    items: [
+      '统一软件图标：新增多分辨率图标 build/icons/icon.ico（内置 16 / 32 / 48 / 256）',
+      '打包时自定义图标完整嵌入 exe，桌面快捷方式、任务栏、窗口图标三处一致'
+    ]
+  }
+];
+
+let currentVersion = '';
+
+/** 渲染更新说明：当前版本高亮显示，历史版本依次排在下方 */
+function renderChangelog() {
+  const box = document.getElementById('changelogBody');
+  box.innerHTML = '';
+  for (const entry of CHANGELOG) {
+    const isCurrent = entry.version === currentVersion;
+    const sec = document.createElement('section');
+    sec.className = 'log-entry' + (isCurrent ? ' current' : '');
+
+    const h = document.createElement('h4');
+    h.className = 'log-version';
+    h.textContent = 'v' + entry.version + (isCurrent ? '（当前版本）' : '');
+    sec.appendChild(h);
+
+    const ul = document.createElement('ul');
+    ul.className = 'log-list';
+    for (const item of entry.items) {
+      const li = document.createElement('li');
+      li.textContent = item;
+      ul.appendChild(li);
+    }
+    sec.appendChild(ul);
+    box.appendChild(sec);
+  }
+}
+
+document.getElementById('versionLine').addEventListener('click', () => {
+  renderChangelog();
+  showModal('changelogModal');
+});
+document.getElementById('changelogClose').addEventListener('click', () => hideModal('changelogModal'));
+
 /* ---------- 启动 ---------- */
 
-// 显示当前软件版本号
+// 显示当前软件版本号（版本号取自 package.json，打包后即安装包版本）
 api.getVersion().then((res) => {
-  if (res.ok) document.getElementById('versionText').textContent = res.version;
+  if (res.ok) {
+    currentVersion = res.version;
+    document.getElementById('versionText').textContent = res.version;
+  }
 });
 
 load();

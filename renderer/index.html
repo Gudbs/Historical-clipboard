@@ -15,7 +15,7 @@
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
       <input id="searchInput" type="text"
-             placeholder="搜索文本内容，或图片 / 文件的备注…"
+             placeholder="搜索文本内容、备注或文件名…"
              autocomplete="off" spellcheck="false">
       <button id="settingsBtn" class="icon-btn" title="设置">⚙️</button>
     </div>
@@ -36,7 +36,8 @@
     <div class="modal">
       <h3 class="modal-title">编辑备注</h3>
       <input id="remarkInput" class="modal-input" type="text"
-             placeholder="给这条记录加个备注，方便以后搜索">
+             placeholder="给这条记录加个备注，方便以后搜索"
+             autocomplete="off" spellcheck="false">
       <div class="modal-actions">
         <button id="remarkCancel" class="btn btn-ghost">取消</button>
         <button id="remarkSave" class="btn btn-primary">保存</button>
@@ -48,8 +49,11 @@
   <div id="editContentModal" class="modal-mask hidden">
     <div class="modal modal-wide">
       <h3 class="modal-title">编辑本条内容</h3>
+      <!-- spellcheck="false"：只看纯文本，不显示红色波浪线的拼写错误提示 -->
       <textarea id="editContentInput" class="modal-textarea" rows="6"
-                placeholder="修改这条记录原本的剪贴板文本内容…"></textarea>
+                placeholder="修改这条记录原本的剪贴板文本内容…"
+                autocomplete="off" autocorrect="off" autocapitalize="off"
+                spellcheck="false" wrap="soft"></textarea>
       <div class="modal-actions">
         <button id="editContentCancel" class="btn btn-ghost">取消</button>
         <button id="editContentSave" class="btn btn-primary">保存</button>
@@ -122,7 +126,20 @@
       <div class="modal-actions">
         <button id="settingsClose" class="btn btn-primary">关闭</button>
       </div>
-      <div class="version-line">v<span id="versionText"></span></div>
+      <div id="versionLine" class="version-line" title="点击查看本版本的更新内容">
+        v<span id="versionText"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 更新说明弹窗（点击设置面板底部版本号打开） -->
+  <div id="changelogModal" class="modal-mask hidden">
+    <div class="modal modal-wide">
+      <h3 class="modal-title">更新说明</h3>
+      <div id="changelogBody" class="changelog"></div>
+      <div class="modal-actions">
+        <button id="changelogClose" class="btn btn-primary">关闭</button>
+      </div>
     </div>
   </div>
 

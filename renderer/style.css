@@ -396,7 +396,40 @@ body {
 .radio-item { font-size: 13px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 .switch-line { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .help-btns { display: flex; gap: 8px; }
-.version-line { text-align: center; color: var(--text-sub); font-size: 12px; margin-top: 12px; }
+/* 版本号：可点击查看更新说明 */
+.version-line {
+  text-align: center;
+  color: var(--text-sub);
+  font-size: 12px;
+  margin-top: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.version-line:hover { color: var(--primary); text-decoration: underline; }
+
+/* 更新说明弹窗 */
+.changelog {
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.log-entry { margin-bottom: 16px; }
+.log-entry:last-child { margin-bottom: 0; }
+.log-version {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+/* 当前版本用主题色高亮 */
+.log-entry.current .log-version { color: var(--primary); }
+.log-list { padding-left: 18px; }
+.log-list li {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.75;
+  user-select: text; /* 更新说明允许选中复制 */
+}
 
 .hidden { display: none !important; }
 
