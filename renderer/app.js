@@ -64,12 +64,16 @@ function render() {
   }
   emptyEl.classList.add('hidden');
   const frag = document.createDocumentFragment();
-  for (const rec of filtered) frag.appendChild(createCard(rec));
+  filtered.forEach((rec, i) => frag.appendChild(createCard(rec, i === filtered.length - 1)));
   listEl.appendChild(frag);
 }
 
-/** 创建一条记录卡片 */
-function createCard(rec) {
+/**
+ * 创建一条记录卡片
+ * @param {object} rec    记录数据
+ * @param {boolean} isLast 是否为列表最后一张（决定「···」菜单向上还是向下展开）
+ */
+function createCard(rec, isLast) {
   const card = document.createElement('div');
   card.className = 'card' + (rec.pinned ? ' pinned' : '');
   card.dataset.id = rec.id;
@@ -128,7 +132,7 @@ function createCard(rec) {
   moreBtn.title = '更多操作';
   moreBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    toggleMenu(card, rec, moreBtn);
+    toggleMenu(card, rec, moreBtn, isLast);
   });
   card.appendChild(moreBtn);
 
@@ -190,8 +194,11 @@ function hideMenu() {
   if (menuEl) menuEl.classList.add('hidden');
 }
 
-/** 在「···」按钮右侧弹出本条记录的下拉菜单 */
-function toggleMenu(card, rec, moreBtn) {
+/**
+ * 在「···」按钮右侧弹出本条记录的下拉菜单。
+ * 最后一张卡片向下没有空间，菜单改为向上展开（底部与按钮对齐），其余卡片一律向下展开。
+ */
+function toggleMenu(card, rec, moreBtn, isLast) {
   const menu = ensureMenu();
   // 菜单已打开且属于同一张卡片 → 再次点击收起
   if (menu._targetId === rec.id && !menu.classList.contains('hidden')) {
@@ -207,15 +214,21 @@ function toggleMenu(card, rec, moreBtn) {
   addMenuItem(menu, '删除本条记录', () => { hideMenu(); askDelete(rec.id); }, 'danger');
   menu._targetId = rec.id;
 
-  // 定位：紧贴「···」按钮右侧弹出（顶部与按钮对齐）；超出窗口右边缘时改放左侧
+  // 先显示再量尺寸：菜单是 display:none 时量不到宽高，同帧内改完位置不会闪
+  menu.classList.remove('hidden');
   const rect = moreBtn.getBoundingClientRect();
-  const menuWidth = 160;
+  const menuWidth = menu.offsetWidth || 160;
+  const menuHeight = menu.offsetHeight || 160;
+
+  // 水平：紧贴「···」按钮右侧；超出窗口右边缘时改放按钮左侧
   let left = rect.right;
   if (left + menuWidth > window.innerWidth - 8) left = rect.left - menuWidth;
   menu.style.left = Math.max(8, left) + 'px';
-  menu.style.top = rect.top + 'px';
 
-  menu.classList.remove('hidden');
+  // 垂直：最后一张卡片向上展开（菜单底部对齐按钮底部）；其余卡片向下展开（顶部对齐按钮顶部）
+  let top = isLast ? rect.bottom - menuHeight : rect.top;
+  if (top < 8) top = 8; // 窗口太矮时贴顶，保证菜单顶端可见
+  menu.style.top = top + 'px';
 }
 
 /** 添加一个下拉菜单项 */
@@ -425,14 +438,40 @@ document.getElementById('confirmCancel').addEventListener('click', () => hideMod
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsClose = document.getElementById('settingsClose');
 const autostartCheck = document.getElementById('autostartCheck');
+const retentionSelect = document.getElementById('retentionSelect');
+const retentionCustomWrap = document.getElementById('retentionCustomWrap');
+const retentionCustomInput = document.getElementById('retentionCustomInput');
+
+const RETENTION_MIN = 1;
+const RETENTION_MAX = 15; // 自定义留存天数上限
+
+/** 把留存天数回填到下拉框：1 / 3 天直接选中，其它天数一律走「自定义」 */
+function fillRetention(days) {
+  const d = Number(days);
+  if (d === 1 || d === 3) {
+    retentionSelect.value = String(d);
+    retentionCustomWrap.classList.add('hidden');
+  } else {
+    retentionSelect.value = 'custom';
+    retentionCustomInput.value = String(d);
+    retentionCustomWrap.classList.remove('hidden');
+  }
+}
+
+/** 读取自定义输入框的天数并夹到 1 ~ 15 之间（越界时回填修正值） */
+function readCustomDays() {
+  let n = Math.round(Number(retentionCustomInput.value));
+  if (!isFinite(n) || n < RETENTION_MIN) n = RETENTION_MIN;
+  if (n > RETENTION_MAX) n = RETENTION_MAX;
+  retentionCustomInput.value = String(n);
+  return n;
+}
 
 async function openSettings() {
   const res = await api.getSettings();
   if (res.ok) {
     const s = res.settings;
-    document.querySelectorAll('input[name="retention"]').forEach((r) => {
-      r.checked = Number(r.value) === s.retentionDays;
-    });
+    fillRetention(s.retentionDays);
     autostartCheck.checked = !!s.autostart;
   }
   showModal('settingsModal');
@@ -445,11 +484,25 @@ settingsClose.addEventListener('click', () => hideModal('settingsModal'));
 document.getElementById('helpReadme').addEventListener('click', () => api.openDoc('readme'));
 document.getElementById('helpTutorial').addEventListener('click', () => api.openDoc('tutorial'));
 
-// 留存天数选择后立即生效
-document.querySelectorAll('input[name="retention"]').forEach((r) => {
-  r.addEventListener('change', () => {
-    if (r.checked) api.setSettings({ retentionDays: Number(r.value) });
-  });
+// 留存时长：选中即生效；切到「自定义」时展开天数输入框并聚焦
+retentionSelect.addEventListener('change', () => {
+  if (retentionSelect.value === 'custom') {
+    retentionCustomWrap.classList.remove('hidden');
+    retentionCustomInput.focus();
+    retentionCustomInput.select();
+    api.setSettings({ retentionDays: readCustomDays() });
+  } else {
+    retentionCustomWrap.classList.add('hidden');
+    api.setSettings({ retentionDays: Number(retentionSelect.value) });
+  }
+});
+
+// 自定义天数：输入完成（回车 / 失焦）时生效，超过 15 天自动夹回 15
+retentionCustomInput.addEventListener('change', () => {
+  api.setSettings({ retentionDays: readCustomDays() });
+});
+retentionCustomInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') retentionCustomInput.blur(); // 交由 change 事件统一处理
 });
 
 // 开机自启开关后立即生效
@@ -465,6 +518,14 @@ api.onChanged(() => load());
 
 // 更新日志数据：从新到旧排列，发新版时在最前面加一条即可
 const CHANGELOG = [
+  {
+    version: '1.2.6',
+    items: [
+      '修复：列表最后一张卡片点开「···」菜单时，菜单会被窗口底部挡住显示不全；现在最后一张卡片的菜单向上展开，其余卡片仍向下展开',
+      '设置按钮从搜索框内移到搜索框右侧，搜索框更宽敞',
+      '自动清理留存时长改为下拉选择：1 天 / 3 天 / 自定义，自定义可填 1 ~ 15 天，超过 15 天会自动改回 15'
+    ]
+  },
   {
     version: '1.2.5',
     items: [

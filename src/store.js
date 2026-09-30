@@ -154,16 +154,28 @@ function editContent(id, content) {
 
 /* ---------- 设置 ---------- */
 
+const RETENTION_DEFAULT = 3;
+const RETENTION_MIN = 1;
+const RETENTION_MAX = 15; // 自定义留存天数上限（与界面一致：1 / 3 / 自定义 1~15 天）
+
+/** 把留存天数夹到合法区间；空值 / 非法值回落到默认天数 */
+function clampRetentionDays(value) {
+  if (value === null || value === undefined || value === '') return RETENTION_DEFAULT;
+  const n = Math.round(Number(value));
+  if (!isFinite(n)) return RETENTION_DEFAULT;
+  return Math.min(RETENTION_MAX, Math.max(RETENTION_MIN, n));
+}
+
 function getSettings() {
   return {
-    retentionDays: Number(db.getSetting('retention_days', '3')),
+    retentionDays: clampRetentionDays(db.getSetting('retention_days', String(RETENTION_DEFAULT))),
     autostart: db.getSetting('autostart', '0') === '1'
   };
 }
 
 function setSettings({ retentionDays, autostart }) {
-  if (retentionDays !== undefined && [1, 3, 5].includes(Number(retentionDays))) {
-    db.setSetting('retention_days', String(retentionDays));
+  if (retentionDays !== undefined) {
+    db.setSetting('retention_days', String(clampRetentionDays(retentionDays)));
   }
   if (autostart !== undefined) {
     app.setLoginItemSettings({ openAtLogin: !!autostart });
@@ -184,7 +196,7 @@ function cleanupStart() {
 
 /** 清理：删除"未置顶"且超过留存天数的记录，并回收孤儿图片文件 */
 function cleanup() {
-  const days = Number(db.getSetting('retention_days', '3')) || 3;
+  const days = clampRetentionDays(db.getSetting('retention_days', String(RETENTION_DEFAULT)));
   const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
   const expired = db.all('SELECT * FROM records WHERE pinned = 0 AND created_at < ?', [cutoff]);
   let changed = expired.length > 0;

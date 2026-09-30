@@ -35,12 +35,20 @@ body {
   background: var(--card);
   border-bottom: 1px solid var(--border);
 }
+/* 顶栏内容：搜索框占满，设置按钮贴在搜索框右侧 */
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 720px;
+  margin: 0 auto;
+}
 .search-wrap {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 720px;
-  margin: 0 auto;
+  min-height: 38px; /* 与右侧设置按钮等高 */
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -59,16 +67,24 @@ body {
   font-size: 14px;
   color: var(--text);
 }
-.icon-btn {
-  border: none;
-  background: transparent;
-  font-size: 18px;
+/* 设置按钮：与搜索框同一套胶囊风格，高度对齐 */
+.settings-btn {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 16px;
+  color: var(--text);
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 6px;
+  padding: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.icon-btn:hover { background: rgba(0, 0, 0, 0.06); }
+.settings-btn:hover { background: #e9ecf1; }
 
 /* ---------- 列表 ---------- */
 #main {
@@ -392,8 +408,35 @@ body {
 }
 .setting-row:last-child { border-bottom: none; }
 .setting-label { font-size: 14px; }
-.radio-group { display: flex; gap: 12px; }
-.radio-item { font-size: 13px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+/* 留存时长：下拉选择 + 自定义天数输入（风格与弹窗输入框一致） */
+.retention-group { display: flex; align-items: center; gap: 8px; }
+.select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 8px;
+  outline: none;
+  cursor: pointer;
+}
+.select:focus { border-color: var(--primary); }
+.custom-days { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.days-input {
+  width: 58px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 8px;
+  text-align: center;
+  outline: none;
+}
+.days-input:focus { border-color: var(--primary); }
+.days-unit { color: var(--text-sub); }
 .switch-line { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
 .help-btns { display: flex; gap: 8px; }
 /* 版本号：可点击查看更新说明 */
