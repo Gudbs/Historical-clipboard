@@ -47,7 +47,7 @@
     </div>
   </div>
 
-  <!-- 编辑本条内容弹窗 -->
+  <!-- 编辑本条内容弹窗（改过内容后点「取消」会先弹「放弃修改」确认） -->
   <div id="editContentModal" class="modal-mask hidden">
     <div class="modal modal-wide">
       <h3 class="modal-title">编辑本条内容</h3>
@@ -59,6 +59,18 @@
       <div class="modal-actions">
         <button id="editContentCancel" class="btn btn-ghost">取消</button>
         <button id="editContentSave" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 放弃修改确认弹窗（仅当编辑框内容有改动时出现） -->
+  <div id="discardModal" class="modal-mask hidden">
+    <div class="modal">
+      <h3 class="modal-title">放弃修改</h3>
+      <p class="modal-text">这条记录的内容已经改过但还没保存，确定不保留这次修改吗？</p>
+      <div class="modal-actions">
+        <button id="discardCancel" class="btn btn-ghost">继续编辑</button>
+        <button id="discardOk" class="btn btn-danger">放弃修改</button>
       </div>
     </div>
   </div>

@@ -113,6 +113,7 @@ renderer 只能通过 `window.clipHistory` 与主进程通信（contextIsolation
 7. **sql.js 打包**：用 `wasmBinary` 直接读 asar 内字节加载 wasm（`require.resolve('sql.js/dist/sql-wasm.wasm')`），避开 locateFile 路径问题。
 8. **安全**：窗口参数 `contextIsolation: true, nodeIntegration: false, sandbox: true`；HTML 加 CSP（`default-src 'self'; img-src 'self' clipimg: data:`）。
 9. **托盘**：`close` 事件 `preventDefault + hide()`，仅 `isQuiting` 时放行；`requestSingleInstanceLock()` 防双开。
+10. **弹窗**：默认点遮罩空白处即关闭；`MASK_CLICK_LOCKED` 白名单（`editContentModal` / `discardModal`）例外，只能点按钮离开。「编辑本条内容」的文本框用 `.modal-textarea { min-height:120px; max-height:40vh }` 限制拖拽上限（防止拉过头把按钮挤出窗口），每次 `openEditContentModal` 重置 `style.height`（不沿用上一条的拉伸高度）；内容有改动时点「取消」先弹「放弃修改」确认，未改动则直接关闭。
 
 ## 七、开发命令
 
@@ -140,6 +141,7 @@ npm run dist       # 打包 Windows exe 安装包（输出到 dist/）
 - 清理：造一条过期记录，留存设为 1 天 → 过期普通记录被删、置顶的保留；选「自定义」填 20 天 → 自动夹回 15 天。
 - 顶栏：设置按钮位于搜索框**右侧**（独立圆形按钮），点击能打开设置面板。
 - 菜单位置：「···」菜单默认**向下**展开；**仅列表最后一张卡片**向上展开（菜单底部与按钮底部对齐），避免被窗口底部截断。
+- 编辑窗：拖动文本框拉伸最多到约屏幕 40% 高，「取消 / 保存」始终可见；打开下一条记录时恢复默认高度；点窗口外空白处不关闭；改过内容点「取消」→ 弹「放弃修改」，选「继续编辑」返回且已输入内容仍在。
 - 关窗口 → 隐藏到托盘；托盘退出 → 真退出；重启 → 数据与图片仍在。
 - 开机自启开关 → 注册表 Run 键出现 / 消失对应条目。
 - `npm run dist` 打包安装 exe 后，以上全部复测通过。

@@ -273,7 +273,10 @@ function showModal(id) { document.getElementById(id).classList.remove('hidden');
 function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
 
 // 点击遮罩空白处关闭弹窗
+// 「编辑本条内容」与「放弃修改」例外：只能点按钮关闭，避免误触丢失正在编辑的内容
+const MASK_CLICK_LOCKED = ['editContentModal', 'discardModal'];
 document.querySelectorAll('.modal-mask').forEach((mask) => {
+  if (MASK_CLICK_LOCKED.includes(mask.id)) return;
   mask.addEventListener('click', (e) => {
     if (e.target === mask) mask.classList.add('hidden');
   });
@@ -302,6 +305,7 @@ document.getElementById('remarkInput').addEventListener('keydown', (e) => {
 /* ---------- 编辑本条内容（菜单项「编辑本条内容」入口） ---------- */
 
 let editContentTargetId = null;
+let editContentOriginal = ''; // 打开弹窗时的原文，用来判断用户有没有改过
 
 /** 打开「编辑本条内容」弹窗；图片记录不支持编辑正文，弹出风格一致的提示窗口 */
 function openEditContentModal(rec) {
@@ -310,9 +314,12 @@ function openEditContentModal(rec) {
     return;
   }
   editContentTargetId = rec.id;
-  document.getElementById('editContentInput').value = rec.content || '';
+  const input = document.getElementById('editContentInput');
+  input.value = rec.content || '';
+  input.style.height = ''; // 恢复默认高度，不沿用上一条记录拖拽出来的高度
+  editContentOriginal = input.value;
   showModal('editContentModal');
-  document.getElementById('editContentInput').focus();
+  input.focus();
 }
 
 document.getElementById('editContentSave').addEventListener('click', async () => {
@@ -321,7 +328,26 @@ document.getElementById('editContentSave').addEventListener('click', async () =>
   await api.editContent(editContentTargetId, text);
   hideModal('editContentModal');
 });
-document.getElementById('editContentCancel').addEventListener('click', () => hideModal('editContentModal'));
+
+// 取消：没改过内容直接关闭；改过则先确认，避免误点丢失编辑
+document.getElementById('editContentCancel').addEventListener('click', () => {
+  if (document.getElementById('editContentInput').value === editContentOriginal) {
+    hideModal('editContentModal');
+    return;
+  }
+  hideModal('editContentModal'); // 先收起编辑窗，确认弹窗单独显示
+  showModal('discardModal');
+});
+
+// 继续编辑：回到编辑窗，已输入的内容原样保留
+document.getElementById('discardCancel').addEventListener('click', () => {
+  hideModal('discardModal');
+  showModal('editContentModal');
+  document.getElementById('editContentInput').focus();
+});
+
+// 放弃修改：编辑窗已收起，直接回到列表
+document.getElementById('discardOk').addEventListener('click', () => hideModal('discardModal'));
 
 /* ---------- 复制成功提示 ---------- */
 
@@ -518,6 +544,15 @@ api.onChanged(() => load());
 
 // 更新日志数据：从新到旧排列，发新版时在最前面加一条即可
 const CHANGELOG = [
+  {
+    version: '1.2.7',
+    items: [
+      '修复：「编辑本条内容」的文本框可以无限往下拉，拉过头会把「取消 / 保存」按钮挤出窗口点不到；现在限制了最大高度',
+      '修复：打开下一条记录的编辑窗时，会沿用上一条拖拽出来的高度；现在每次打开都恢复默认高度',
+      '「编辑本条内容」点击窗口外的空白区域不再关闭，避免误触丢失正在编辑的内容',
+      '「编辑本条内容」改过内容后点「取消」，会先弹出确认窗口询问是否放弃修改，可选「继续编辑」返回'
+    ]
+  },
   {
     version: '1.2.6',
     items: [

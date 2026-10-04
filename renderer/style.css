@@ -322,6 +322,9 @@ body {
   font-family: inherit;
   outline: none;
   resize: vertical;
+  min-height: 120px;
+  /* 拖拽上限：防止拉过头把「取消 / 保存」按钮挤出窗口点不到 */
+  max-height: 40vh;
 }
 .modal-textarea:focus { border-color: var(--primary); }
 .modal-actions {
