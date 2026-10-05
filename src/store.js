@@ -166,22 +166,43 @@ function clampRetentionDays(value) {
   return Math.min(RETENTION_MAX, Math.max(RETENTION_MIN, n));
 }
 
+// 主题：浅色 / 深色 / 跟随系统（默认浅色）
+const THEMES = ['light', 'dark', 'system'];
+const THEME_DEFAULT = 'light';
+
+function readTheme() {
+  const t = db.getSetting('theme', THEME_DEFAULT);
+  return THEMES.includes(t) ? t : THEME_DEFAULT;
+}
+
 function getSettings() {
   return {
     retentionDays: clampRetentionDays(db.getSetting('retention_days', String(RETENTION_DEFAULT))),
-    autostart: db.getSetting('autostart', '0') === '1'
+    autostart: db.getSetting('autostart', '0') === '1',
+    theme: readTheme(),
+    // 置顶分组是否折叠：首次安装默认折叠（'1'），之后按用户上次的选择
+    pinnedCollapsed: db.getSetting('pinned_collapsed', '1') === '1'
   };
 }
 
-function setSettings({ retentionDays, autostart }) {
+function setSettings({ retentionDays, autostart, theme, pinnedCollapsed }) {
+  // 只有留存天数变化才需要立即清理，避免切换主题等无关操作触发全表扫描
+  let needCleanup = false;
   if (retentionDays !== undefined) {
     db.setSetting('retention_days', String(clampRetentionDays(retentionDays)));
+    needCleanup = true;
   }
   if (autostart !== undefined) {
     app.setLoginItemSettings({ openAtLogin: !!autostart });
     db.setSetting('autostart', autostart ? '1' : '0');
   }
-  cleanup(); // 按新留存天数立即清理一次
+  if (theme !== undefined && THEMES.includes(theme)) {
+    db.setSetting('theme', theme);
+  }
+  if (pinnedCollapsed !== undefined) {
+    db.setSetting('pinned_collapsed', pinnedCollapsed ? '1' : '0');
+  }
+  if (needCleanup) cleanup();
   notify();
   return getSettings();
 }

@@ -1,4 +1,8 @@
-/* 剪贴板历史 · 界面样式 */
+/* 剪贴板历史 · 界面样式
+ *
+ * 主题机制：所有颜色都走 CSS 变量，浅色写在 :root，深色在 [data-theme="dark"] 覆盖。
+ * <html data-theme="light|dark"> 由 preload.js 在首帧前写入，app.js 在切换主题时更新。
+ */
 
 :root {
   --bg: #f2f4f7;
@@ -7,11 +11,78 @@
   --text: #1f2329;
   --text-sub: #8a919c;
   --primary: #3b82f6;
-  --primary-dark: #2b6ce0;
+  --primary-dark: #2b6ce0;   /* 主色 hover 态（深色主题下比主色更亮） */
   --gold: #e8a13c;
   --danger: #e5484d;
+  --danger-hover: #d1353a;
+  --danger-soft: rgba(229, 72, 77, 0.12);
+  --success: #16a34a;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 14px rgba(0, 0, 0, 0.05);
+  --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.08);
   --radius: 12px;
+
+  --surface-2: #ffffff;              /* 输入框 / 下拉框 / 普通按钮底色 */
+  --surface-hover: #f4f5f7;          /* 幽灵按钮 hover */
+  --surface-hover-2: #e9ecf1;        /* 顶栏圆形设置按钮 hover */
+  --hover-soft: rgba(0, 0, 0, 0.06); /* 图标按钮 hover */
+  --divider: #f0f1f4;                /* 卡片信息行 / 设置行分隔线 */
+  --thumb-bg: #f0f1f4;               /* 图片缩略图占位底色 */
+  --scrollbar-thumb: #d3d8df;
+  --scrollbar-thumb-hover: #b9c0ca;
+
+  /* 置顶卡片配色 */
+  --pinned-border: #f3d9a4;
+  --pinned-bg-from: #fffdf6;
+  --pinned-bg-to: #ffffff;
+  --pin-badge-bg: #fdf3df;
+
+  /* 顶部栏亚克力磨砂 */
+  --topbar-bg: rgba(255, 255, 255, 0.72);
+  --topbar-border: rgba(230, 233, 239, 0.75);
+  --topbar-blur: 18px;
+
+  --mask: rgba(0, 0, 0, 0.35);
+  --topbar-h: 62px;                  /* 顶栏固定高度（fixed 定位，body 用它留出空间） */
+}
+
+/* 深色主题：只覆盖颜色，布局规则完全复用 */
+[data-theme="dark"] {
+  --bg: #15171c;
+  --card: #1f2229;
+  --border: #2f333b;
+  --text: #e5e7eb;
+  --text-sub: #8b929d;
+  --primary: #4c8ef7;
+  --primary-dark: #6ba1ff;
+  --gold: #d9a24a;
+  --danger: #ef5f66;
+  --danger-hover: #f47c82;
+  --danger-soft: rgba(239, 95, 102, 0.16);
+  --success: #4ade80;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  --surface-2: #262a32;
+  --surface-hover: #2b3038;
+  --surface-hover-2: #31363f;
+  --hover-soft: rgba(255, 255, 255, 0.08);
+  --divider: #2b2f36;
+  --thumb-bg: #262a32;
+  --scrollbar-thumb: #3a4048;
+  --scrollbar-thumb-hover: #4a515b;
+
+  /* 深色下的置顶卡片：暗金描边 + 极淡的暖色渐变，不刺眼 */
+  --pinned-border: #4a4029;
+  --pinned-bg-from: #262319;
+  --pinned-bg-to: #1f2229;
+  --pin-badge-bg: #39301d;
+
+  /* 深色下亚克力降低亮度，避免发光刺眼 */
+  --topbar-bg: rgba(21, 23, 28, 0.72);
+  --topbar-border: rgba(47, 51, 59, 0.75);
+  --topbar-blur: 20px;
+
+  --mask: rgba(0, 0, 0, 0.55);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,20 +97,32 @@ body {
   flex-direction: column;
   overflow: hidden;
   user-select: none; /* 避免列表上误选文字干扰点击复制 */
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
-/* ---------- 顶部栏 ---------- */
+/* ---------- 顶部栏（亚克力磨砂，悬浮在列表之上） ---------- */
 .topbar {
-  flex: 0 0 auto;
-  padding: 12px 16px;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--topbar-border);
+  /* 亚克力磨砂：模糊并略微提饱和，让下方滚过的卡片透出毛玻璃质感 */
+  backdrop-filter: blur(var(--topbar-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--topbar-blur)) saturate(180%);
 }
 /* 顶栏内容：搜索框占满，设置按钮贴在搜索框右侧 */
 .topbar-inner {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   max-width: 720px;
   margin: 0 auto;
 }
@@ -56,7 +139,7 @@ body {
 }
 .search-wrap:focus-within {
   border-color: var(--primary);
-  background: #fff;
+  background: var(--surface-2);
 }
 .search-icon { font-size: 14px; opacity: 0.6; }
 #searchInput {
@@ -84,21 +167,50 @@ body {
   align-items: center;
   justify-content: center;
 }
-.settings-btn:hover { background: #e9ecf1; }
+.settings-btn:hover { background: var(--surface-hover-2); }
 
 /* ---------- 列表 ---------- */
 #main {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  /* 顶部不留 padding：让列表内容能滚到固定顶栏下面，亚克力磨砂才透得出来 */
+  padding: 0 16px 16px;
 }
 .list {
   max-width: 720px;
   margin: 0 auto;
+  /* 顶部留白放在列表内部（跟着内容一起滚），而不是滚动容器的 padding 上 */
+  padding-top: calc(var(--topbar-h) + 16px);
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+
+/* ---------- 置顶分组折叠标题栏（通栏，宽度与卡片一致） ---------- */
+.pinned-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--gold);
+  background: var(--pinned-bg-from);
+  border: 1px solid var(--pinned-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.pinned-header:hover { background: var(--surface-hover); }
+.pinned-arrow {
+  display: inline-block;
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+.pinned-arrow.collapsed { transform: rotate(-90deg); } /* ▼ 转 ▶ */
 
 /* ---------- 卡片 ---------- */
 .card {
@@ -114,12 +226,12 @@ body {
 }
 .card:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-hover);
 }
 /* 置顶卡片：左侧金色竖条 */
 .card.pinned {
-  border-color: #f3d9a4;
-  background: linear-gradient(180deg, #fffdf6, #fff);
+  border-color: var(--pinned-border);
+  background: linear-gradient(180deg, var(--pinned-bg-from), var(--pinned-bg-to));
 }
 .card.pinned::before {
   content: "";
@@ -132,7 +244,7 @@ body {
 }
 /* 置顶徽章（位于底部信息行，时间之前） */
 .pin-badge {
-  background: #fdf3df;
+  background: var(--pin-badge-bg);
   color: var(--gold);
   font-size: 11px;
   padding: 2px 8px;
@@ -158,7 +270,7 @@ body {
   transition: opacity 0.12s, background 0.12s;
   z-index: 2;
 }
-.more-btn:hover { opacity: 1; background: rgba(0, 0, 0, 0.06); }
+.more-btn:hover { opacity: 1; background: var(--hover-soft); }
 
 /* 文本预览 */
 .text-preview {
@@ -179,7 +291,7 @@ body {
   max-width: 100%;
   max-height: 240px;
   border-radius: 8px;
-  background: #f0f1f4;
+  background: var(--thumb-bg);
   border: 1px solid var(--border);
   cursor: zoom-in;
 }
@@ -209,7 +321,7 @@ body {
   gap: 10px;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid #f0f1f4;
+  border-top: 1px solid var(--divider);
 }
 .time { font-size: 12px; color: var(--text-sub); flex: 0 0 auto; }
 .remark-text {
@@ -234,14 +346,23 @@ body {
   transition: opacity 0.12s, background 0.12s;
   flex: 0 0 auto;
 }
-.copy-btn:hover { opacity: 1; background: rgba(0, 0, 0, 0.06); }
+.copy-btn:hover { opacity: 1; background: var(--hover-soft); }
 
 /* 复制成功提示（卡片下方静态文字） */
 .copy-tip {
   margin-top: 8px;
   font-size: 12px;
-  color: #16a34a;
+  color: var(--success);
   text-align: center;
+}
+
+/* 列表底部提示：全部加载完、没有更多历史记录时显示 */
+.list-end {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-sub);
+  opacity: 0.75;
+  padding: 4px 0 2px;
 }
 
 /* ---------- 下拉菜单（「···」右侧弹出） ---------- */
@@ -251,7 +372,7 @@ body {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   padding: 6px;
   z-index: 300;
 }
@@ -270,12 +391,13 @@ body {
 }
 .menu-item:hover { background: var(--bg); }
 .menu-item.danger { color: var(--danger); }
-.menu-item.danger:hover { background: rgba(229, 72, 77, 0.12); }
+.menu-item.danger:hover { background: var(--danger-soft); }
 
 /* ---------- 空状态 ---------- */
 .empty {
   max-width: 720px;
-  margin: 80px auto;
+  /* 顶部留出固定顶栏的高度 */
+  margin: calc(var(--topbar-h) + 60px) auto 80px;
   text-align: center;
   color: var(--text-sub);
 }
@@ -287,7 +409,7 @@ body {
 .modal-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--mask);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -299,32 +421,52 @@ body {
   background: var(--card);
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
 }
-.modal-title { font-size: 16px; margin-bottom: 14px; }
+.modal-title { font-size: 16px; margin-bottom: 14px; flex: 0 0 auto; }
 .modal-input {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
+  font-family: inherit;
+  background: var(--surface-2);
+  color: var(--text);
   outline: none;
 }
 .modal-input:focus { border-color: var(--primary); }
-.modal-wide { width: 480px; }
+
+/* 编辑内容弹窗：整体支持拖动缩放（右下角手柄），文本框在弹窗内自适应 */
+.modal-wide {
+  width: 480px;
+  max-width: 90vw;
+  max-height: 85vh;
+  min-width: 320px;
+  min-height: 240px;
+  resize: both;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 .modal-textarea {
   width: 100%;
+  /* 高度跟随弹窗缩放（不单独设拖拽手柄，避免与弹窗缩放打架） */
+  flex: 1 1 auto;
+  min-height: 100px;
+  /* 上限为窗口可视高度的 50%，内容超出后在框内滚动 */
+  max-height: 50vh;
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
   line-height: 1.6;
   font-family: inherit;
+  background: var(--surface-2);
+  color: var(--text);
   outline: none;
-  resize: vertical;
-  min-height: 120px;
-  /* 拖拽上限：防止拉过头把「取消 / 保存」按钮挤出窗口点不到 */
-  max-height: 40vh;
+  resize: none;
 }
 .modal-textarea:focus { border-color: var(--primary); }
 .modal-actions {
@@ -332,26 +474,28 @@ body {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+  flex: 0 0 auto;
 }
 .btn {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface-2);
   color: var(--text);
   font-size: 13px;
+  font-family: inherit;
   border-radius: 8px;
   padding: 8px 16px;
   cursor: pointer;
 }
 .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
 .btn-primary:hover { background: var(--primary-dark); }
-.btn-ghost:hover { background: #f4f5f7; }
+.btn-ghost:hover { background: var(--surface-hover); }
 /* 红色警告按钮（删除确认） */
 .btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
-.btn-danger:hover { background: #d1353a; }
+.btn-danger:hover { background: var(--danger-hover); }
 /* 弹窗正文 */
 .modal-text { font-size: 14px; color: var(--text); line-height: 1.7; }
 
-/* 图片预览弹窗 */
+/* 图片预览弹窗（固定暗色背景，与主题无关） */
 .preview-wrap {
   max-width: 92vw;
   max-height: 88vh;
@@ -401,22 +545,24 @@ body {
   text-align: center;
 }
 
-/* 设置项 */
+/* ---------- 设置面板 ---------- */
+/* 每个设置板块一行：加粗标题 + 右侧控件，板块之间用分隔线隔开 */
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f1f4;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--divider);
 }
 .setting-row:last-child { border-bottom: none; }
-.setting-label { font-size: 14px; }
+.setting-label { font-size: 14px; font-weight: 600; flex: 0 0 auto; }
 /* 留存时长：下拉选择 + 自定义天数输入（风格与弹窗输入框一致） */
 .retention-group { display: flex; align-items: center; gap: 8px; }
 .select {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-2);
   color: var(--text);
   font-size: 13px;
   font-family: inherit;
@@ -430,7 +576,7 @@ body {
   width: 58px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface-2);
   color: var(--text);
   font-size: 13px;
   font-family: inherit;
@@ -477,9 +623,26 @@ body {
   user-select: text; /* 更新说明允许选中复制 */
 }
 
+/* 启动出错时的兜底提示（正常情况下不会出现） */
+.boot-error {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 400;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.6;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  user-select: text;
+}
+
 .hidden { display: none !important; }
 
 /* 滚动条 */
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-thumb { background: #d3d8df; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #b9c0ca; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }

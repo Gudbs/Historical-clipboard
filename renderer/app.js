@@ -8,11 +8,29 @@
  *   - 点击页面空白处或滚动窗口 → 收起下拉菜单
  *   - 点击卡片其他位置：不再触发复制
  */
+/* ---------- 启动兜底 ---------- */
+// 万一脚本在初始化阶段出错，界面会整个空白、小白用户无从反馈。
+// 这里把错误直接显示出来，至少让人知道"出错了"而不是"软件坏了"。
+window.addEventListener('error', (e) => {
+  try {
+    if (document.getElementById('bootError')) return;
+    const box = document.createElement('div');
+    box.id = 'bootError';
+    box.className = 'boot-error';
+    box.textContent = '界面加载出错了：' + ((e && e.message) || '未知错误') +
+      '（记录本身不受影响，可截图反馈）';
+    document.body.appendChild(box);
+  } catch (err) { /* 兜底自身出错就静默，避免二次报错 */ }
+});
+
 const api = window.clipHistory;
 
 // 全量记录（已排序）与当前搜索过滤后的记录
 let records = [];
 let filtered = [];
+
+// 置顶分组是否折叠：首次安装默认折叠，之后按用户上次的选择（存在设置里）
+let pinnedCollapsed = true;
 
 const listEl = document.getElementById('list');
 const emptyEl = document.getElementById('empty');
@@ -52,7 +70,7 @@ function applyFilter() {
   render();
 }
 
-/** 渲染卡片列表 */
+/** 渲染卡片列表：置顶分组（可折叠）+ 普通记录 + 底部提示 */
 function render() {
   listEl.innerHTML = '';
   if (filtered.length === 0) {
@@ -63,9 +81,60 @@ function render() {
     return;
   }
   emptyEl.classList.add('hidden');
+
+  const pinnedRecs = filtered.filter((r) => r.pinned);
+  const normalRecs = filtered.filter((r) => !r.pinned);
+
+  // 哪张卡片是「最后一张」（决定它的「···」菜单向上展开）：
+  // 有普通记录时是最后一张普通卡片；只有置顶记录且展开时，才是最后一张置顶卡片
+  let lastId = null;
+  if (normalRecs.length > 0) lastId = normalRecs[normalRecs.length - 1].id;
+  else if (pinnedRecs.length > 0 && !pinnedCollapsed) lastId = pinnedRecs[pinnedRecs.length - 1].id;
+
   const frag = document.createDocumentFragment();
-  filtered.forEach((rec, i) => frag.appendChild(createCard(rec, i === filtered.length - 1)));
+
+  if (pinnedRecs.length > 0) {
+    frag.appendChild(createPinnedHeader(pinnedRecs.length));
+    if (!pinnedCollapsed) {
+      for (const rec of pinnedRecs) frag.appendChild(createCard(rec, rec.id === lastId));
+    }
+  }
+  for (const rec of normalRecs) frag.appendChild(createCard(rec, rec.id === lastId));
+
+  // 记录已全部渲染完，末尾给出「没有更多了」的收尾提示
+  const end = document.createElement('div');
+  end.className = 'list-end';
+  end.textContent = '没有更多了哦~';
+  frag.appendChild(end);
+
   listEl.appendChild(frag);
+}
+
+/** 置顶分组标题栏：「已置顶（N 条）」+ 折叠箭头 */
+function createPinnedHeader(count) {
+  const bar = document.createElement('button');
+  bar.type = 'button';
+  bar.className = 'pinned-header';
+  bar.title = pinnedCollapsed ? '点击展开置顶记录' : '点击收起置顶记录';
+
+  const arrow = document.createElement('span');
+  arrow.className = 'pinned-arrow' + (pinnedCollapsed ? ' collapsed' : '');
+  arrow.textContent = '▼';
+
+  const label = document.createElement('span');
+  label.textContent = '已置顶（' + count + ' 条）';
+
+  bar.appendChild(arrow);
+  bar.appendChild(label);
+  bar.addEventListener('click', togglePinnedGroup);
+  return bar;
+}
+
+/** 展开 / 收起置顶分组（状态写入设置，下次打开保持） */
+function togglePinnedGroup() {
+  pinnedCollapsed = !pinnedCollapsed;
+  api.setSettings({ pinnedCollapsed });
+  render();
 }
 
 /**
@@ -316,7 +385,7 @@ function openEditContentModal(rec) {
   editContentTargetId = rec.id;
   const input = document.getElementById('editContentInput');
   input.value = rec.content || '';
-  input.style.height = ''; // 恢复默认高度，不沿用上一条记录拖拽出来的高度
+  input.style.height = ''; // 清掉可能残留的内联高度，恢复默认值
   editContentOriginal = input.value;
   showModal('editContentModal');
   input.focus();
@@ -467,6 +536,7 @@ const autostartCheck = document.getElementById('autostartCheck');
 const retentionSelect = document.getElementById('retentionSelect');
 const retentionCustomWrap = document.getElementById('retentionCustomWrap');
 const retentionCustomInput = document.getElementById('retentionCustomInput');
+const themeSelect = document.getElementById('themeSelect');
 
 const RETENTION_MIN = 1;
 const RETENTION_MAX = 15; // 自定义留存天数上限
@@ -498,6 +568,7 @@ async function openSettings() {
   if (res.ok) {
     const s = res.settings;
     fillRetention(s.retentionDays);
+    themeSelect.value = s.theme;
     autostartCheck.checked = !!s.autostart;
   }
   showModal('settingsModal');
@@ -536,6 +607,39 @@ autostartCheck.addEventListener('change', () => {
   api.setSettings({ autostart: autostartCheck.checked });
 });
 
+// 主题：切换后立即生效（写 <html data-theme>，CSS 变量整套跟着换），并记住选择
+themeSelect.addEventListener('change', () => {
+  applyTheme(themeSelect.value);
+  api.setSettings({ theme: themeSelect.value });
+});
+
+/* ---------- 主题（浅色 / 深色 / 跟随系统） ---------- */
+
+let currentTheme = 'light'; // 用户的选择，'light' | 'dark' | 'system'
+// matchMedia 理论上一直在，但整个界面都指着这个脚本跑，取不到也不能让它抛错
+const darkMedia = typeof window.matchMedia === 'function'
+  ? window.matchMedia('(prefers-color-scheme: dark)')
+  : null;
+
+/** 把用户选择解析成实际生效的主题 */
+function resolveTheme(theme) {
+  if (theme === 'system') return (darkMedia && darkMedia.matches) ? 'dark' : 'light';
+  return theme === 'dark' ? 'dark' : 'light';
+}
+
+/** 应用主题：只改 <html data-theme>，整套 CSS 变量随之切换 */
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.documentElement.dataset.theme = resolveTheme(theme);
+}
+
+// 选「跟随系统」时，系统深浅色变化要实时跟随
+if (darkMedia && darkMedia.addEventListener) {
+  darkMedia.addEventListener('change', () => {
+    if (currentTheme === 'system') applyTheme('system');
+  });
+}
+
 /* ---------- 订阅主进程推送 ---------- */
 
 api.onChanged(() => load());
@@ -544,6 +648,19 @@ api.onChanged(() => load());
 
 // 更新日志数据：从新到旧排列，发新版时在最前面加一条即可
 const CHANGELOG = [
+  {
+    version: '1.3.0',
+    items: [
+      '新增：置顶分组折叠。所有置顶记录收进顶部「已置顶（N 条）」标题栏，第一次打开默认折叠，优先显示最新剪贴记录；点标题栏可展开 / 收起，选择会被记住',
+      '新增：顶部搜索栏改为亚克力磨砂半透明效果，卡片从下方滚过时透出毛玻璃质感；深色主题下自动降低亮度，不刺眼',
+      '新增：列表末尾显示「没有更多了哦~」，提示记录已全部加载完',
+      '新增：主题切换（设置 → 主题色）：浅色 / 深色 / 跟随系统，默认浅色；切换后立即生效，无需重启，卡片、置顶配色、文字、滚动条等全部跟着换',
+      '编辑本条内容：文本框最大高度改为窗口高度的 50%，内容超出时在框内滚动；弹窗右下角可拖动缩放',
+      '设置面板板块顺序调整为：自动清理留存时长 → 主题色 → 帮助文档 → 开机自动启动，板块标题加粗、板块之间加分隔线',
+      '修复：主题预置在页面结构就绪前执行会报错并中断整个界面脚本、导致打开后一片空白；现已改为在页面结构就绪后、绘制之前执行，深色启动不会闪白',
+      '优化：万一界面初始化出错，底部会显示一行红色提示（而不是只留一片空白），方便截图反馈'
+    ]
+  },
   {
     version: '1.2.7',
     items: [
@@ -650,6 +767,14 @@ api.getVersion().then((res) => {
     currentVersion = res.version;
     document.getElementById('versionText').textContent = res.version;
   }
+});
+
+// 读取已保存的设置：主题（preload 启动时已预置过一次，这里同步到本地变量）与置顶分组折叠状态
+api.getSettings().then((res) => {
+  if (!res.ok) return;
+  applyTheme(res.settings.theme);
+  pinnedCollapsed = res.settings.pinnedCollapsed;
+  applyFilter();
 });
 
 load();

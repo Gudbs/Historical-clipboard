@@ -105,6 +105,12 @@ function register(store, { win, quit }) {
     try { return { ok: true, version: app.getVersion() }; }
     catch (e) { return { ok: false, error: errMsg(e) }; }
   });
+
+  // 主题同步读取：preload 在页面渲染前调用一次，避免深色模式启动闪白（不能用 handle，必须同步）
+  ipcMain.on('clip:themeSync', (e) => {
+    try { e.returnValue = store.getSettings().theme; }
+    catch (err) { e.returnValue = 'light'; }
+  });
 }
 
 module.exports = { register };

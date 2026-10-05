@@ -11,7 +11,7 @@
 
 - **全程离线**：不联网、不上传任何剪贴板数据，数据只保存在本机。
 - **捕获范围**：纯文本、截图图片、网页图片、资源管理器复制的文件。
-- **核心功能**：卡片列表（按复制时间倒序）、点击一键重新复制、置顶、单条删除、备注、关键词搜索、系统托盘常驻、开机自启、按留存天数自动清理过期记录（**置顶记录不参与自动清理**）。
+- **核心功能**：卡片列表（按复制时间倒序）、点击一键重新复制、置顶（含可折叠的「已置顶」分组）、单条删除、备注、关键词搜索、浅色 / 深色 / 跟随系统主题、系统托盘常驻、开机自启、按留存天数自动清理过期记录（**置顶记录不参与自动清理**）。
 - **交付物**：完整可运行源码 + electron-builder 打包的 exe 安装包 + 面向零基础的 `docs/教程.md`。
 
 ## 二、技术栈与关键决策（改动前先确认理由）
@@ -43,8 +43,9 @@
 | IPC 注册（全部 `ipcMain.handle`） | [src/ipc.js](src/ipc.js) |
 | 托盘创建与退出逻辑 | [src/tray.js](src/tray.js) |
 | 界面 HTML（搜索框 + 卡片列表 + 设置面板） | [renderer/index.html](renderer/index.html) |
-| 界面样式（卡片 / 置顶 / 缩略图 / 搜索） | [renderer/style.css](renderer/style.css) |
+| 界面样式（卡片 / 置顶分组 / 缩略图；颜色全部走 CSS 变量：浅色在 `:root`、深色在 `[data-theme="dark"]`） | [renderer/style.css](renderer/style.css) |
 | 界面逻辑（渲染卡片、搜索筛选、调 IPC） | [renderer/app.js](renderer/app.js) |
+| 主题预置（`<head>` 内同步执行，绘制前写 `<html data-theme>`） | [renderer/theme-init.js](renderer/theme-init.js) |
 | 应用 / 安装包 / 窗口图标（多分辨率 ICO，16/32/48/256） | [build/icons/icon.ico](build/icons/icon.ico) |
 | 托盘图标（32×32 PNG） | [build/tray-icon.png](build/tray-icon.png) |
 | 图标一键重新生成 | [scripts/gen-icons.js](scripts/gen-icons.js) |
@@ -81,7 +82,7 @@ CREATE INDEX idx_records_created ON records(created_at DESC);
 CREATE INDEX idx_records_hash   ON records(hash);
 
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
--- key: 'retention_days' | 'autostart'
+-- key: 'retention_days' | 'autostart' | 'theme' | 'pinned_collapsed'
 ```
 
 ## 五、通信契约（IPC）
@@ -98,6 +99,7 @@ renderer 只能通过 `window.clipHistory` 与主进程通信（contextIsolation
 | `clip:getSettings` | — | 返回 retentionDays / autostart |
 | `clip:setSettings` | `{ retentionDays?, autostart? }` | 生效自启 + 立即触发一次清理 |
 | `clip:quit` | — | 真正退出（托盘退出） |
+| `clip:themeSync` | （`ipcMain.on` **同步**返回） | preload 启动时取一次主题，首帧前写 `<html data-theme>`，避免深色模式闪白 |
 | `clip:changed` | （主进程→renderer 推送） | renderer 收到后重新 loadList |
 
 **搜索在 renderer 端做**：`loadList` 一次取回紧凑数据，renderer 端 `input` 防抖 ~150ms 本地过滤。**所有类型统一匹配 `content` + `remark`**（文件记录的 `content` 就是路径列表，`file_names` 仅供卡片显示）——即文本搜正文、文件搜文件名 / 路径、图片搜备注，且备注对任何类型都生效。
@@ -113,7 +115,10 @@ renderer 只能通过 `window.clipHistory` 与主进程通信（contextIsolation
 7. **sql.js 打包**：用 `wasmBinary` 直接读 asar 内字节加载 wasm（`require.resolve('sql.js/dist/sql-wasm.wasm')`），避开 locateFile 路径问题。
 8. **安全**：窗口参数 `contextIsolation: true, nodeIntegration: false, sandbox: true`；HTML 加 CSP（`default-src 'self'; img-src 'self' clipimg: data:`）。
 9. **托盘**：`close` 事件 `preventDefault + hide()`，仅 `isQuiting` 时放行；`requestSingleInstanceLock()` 防双开。
-10. **弹窗**：默认点遮罩空白处即关闭；`MASK_CLICK_LOCKED` 白名单（`editContentModal` / `discardModal`）例外，只能点按钮离开。「编辑本条内容」的文本框用 `.modal-textarea { min-height:120px; max-height:40vh }` 限制拖拽上限（防止拉过头把按钮挤出窗口），每次 `openEditContentModal` 重置 `style.height`（不沿用上一条的拉伸高度）；内容有改动时点「取消」先弹「放弃修改」确认，未改动则直接关闭。
+10. **弹窗**：默认点遮罩空白处即关闭；`MASK_CLICK_LOCKED` 白名单（`editContentModal` / `discardModal`）例外，只能点按钮离开。「编辑本条内容」的文本框 `.modal-textarea { min-height:100px; max-height:50vh }`（上限为窗口可视高度的 50%，超出后框内滚动），外层 `.modal-wide` 用 `resize: both` 支持拖动缩放，每次 `openEditContentModal` 重置 `style.height`（不沿用上一条的拉伸高度）；内容有改动时点「取消」先弹「放弃修改」确认，未改动则直接关闭。
+11. **主题**：所有颜色走 CSS 变量——浅色定义在 `:root`、深色在 `[data-theme="dark"]` 覆盖，**新增颜色必须两处都给值**（含置顶卡片的 `--pinned-*`、亚克力的 `--topbar-*`、分隔线 `--divider`、滚动条等）。设置项 `theme` 存 DB，默认 `'light'`；app.js 的 `applyTheme()` 负责切换，`'system'` 用 `matchMedia('(prefers-color-scheme: dark)')` 解析并监听系统变化。
+    **启动预置链路（切勿改动顺序）**：preload 经 `clip:themeSync` **同步**取一次主题（只能取值，**绝不能在 preload 里操作 DOM**——preload 执行时 `<html>` 尚未解析出来，`document.documentElement` 为 `null`，一旦抛错 preload 就中断，`window.clipHistory` 暴露不出来，整个界面白屏），把结果挂在 `clipHistory.getThemeSync()`；再由 `<head>` 里的 `renderer/theme-init.js` 同步写入 `<html data-theme>`。`index.html` 的 `<html>` 标签上写有 `data-theme="light"` 作为最终兜底。app.js 顶部还注册了 `error` 事件兜底，初始化出错时显示 `.boot-error` 而不是白屏。
+12. **置顶分组折叠**：列表把 `filtered` 拆成 pinned / normal 两组渲染，置顶组上方是通栏标题栏「已置顶（N 条）」+ 箭头（`.pinned-header`，宽度随 `.list` 与卡片一致）。`pinnedCollapsed` 默认 `true`（**首次安装折叠**），状态存 settings，点标题栏切换并重新渲染。折叠时置顶卡片完全不渲染；「最后一张卡片」（菜单向上展开的那张）取**最后一张普通卡片**，只有全是置顶记录时才取置顶组最后一张。列表非空时末尾追加 `.list-end`「没有更多了哦~」。
 
 ## 七、开发命令
 
@@ -141,7 +146,10 @@ npm run dist       # 打包 Windows exe 安装包（输出到 dist/）
 - 清理：造一条过期记录，留存设为 1 天 → 过期普通记录被删、置顶的保留；选「自定义」填 20 天 → 自动夹回 15 天。
 - 顶栏：设置按钮位于搜索框**右侧**（独立圆形按钮），点击能打开设置面板。
 - 菜单位置：「···」菜单默认**向下**展开；**仅列表最后一张卡片**向上展开（菜单底部与按钮底部对齐），避免被窗口底部截断。
-- 编辑窗：拖动文本框拉伸最多到约屏幕 40% 高，「取消 / 保存」始终可见；打开下一条记录时恢复默认高度；点窗口外空白处不关闭；改过内容点「取消」→ 弹「放弃修改」，选「继续编辑」返回且已输入内容仍在。
+- 编辑窗：文本框最高为窗口高度的 50%（超出框内滚动）且弹窗可拖动缩放，「取消 / 保存」始终可见；打开下一条记录时恢复默认高度；点窗口外空白处不关闭；改过内容点「取消」→ 弹「放弃修改」，选「继续编辑」返回且已输入内容仍在。
+- 置顶分组：首次打开默认**折叠**，只显示「已置顶（N 条）」标题栏；点标题栏展开看到全部置顶卡片；重启后保持上次的展开 / 折叠状态。
+- 主题：设置里切「深色」→ 立即变色（卡片、文字、输入框、滚动条、置顶卡片一起变）；选「跟随系统」后改 Windows 深浅色，软件跟着变；重启不闪白。
+- 顶栏：搜索栏为亚克力磨砂半透明，卡片从下方滚过时透出模糊；列表滚到底显示浅灰「没有更多了哦~」，搜索无结果时走空状态、不显示该提示。
 - 关窗口 → 隐藏到托盘；托盘退出 → 真退出；重启 → 数据与图片仍在。
 - 开机自启开关 → 注册表 Run 键出现 / 消失对应条目。
 - `npm run dist` 打包安装 exe 后，以上全部复测通过。

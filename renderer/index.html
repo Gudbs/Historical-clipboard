@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <!-- 主题预置：必须放在 <head> 里同步执行，在页面绘制前把主题写进 <html>，深色启动不闪白 -->
+  <script src="theme-init.js"></script>
   <!-- 内容安全策略：禁止加载任何远程内容，纯本地运行 -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; img-src 'self' clipimg: data:; style-src 'self' 'unsafe-inline'; script-src 'self'">
@@ -117,6 +119,7 @@
   <div id="settingsModal" class="modal-mask hidden">
     <div class="modal">
       <h3 class="modal-title">设置</h3>
+      <!-- ① 自动清理留存时长 -->
       <div class="setting-row">
         <span class="setting-label">自动清理留存时长</span>
         <div class="retention-group">
@@ -134,17 +137,28 @@
           </span>
         </div>
       </div>
+      <!-- ② 主题色（切换后立即生效，无需重启） -->
       <div class="setting-row">
-        <label class="setting-label switch-line">
-          <input type="checkbox" id="autostartCheck"> 开机自动启动（常驻托盘）
-        </label>
+        <span class="setting-label">主题色</span>
+        <select id="themeSelect" class="select" title="切换界面主题，立即生效">
+          <option value="light">浅色</option>
+          <option value="dark">深色</option>
+          <option value="system">跟随系统</option>
+        </select>
       </div>
+      <!-- ③ 帮助文档 -->
       <div class="setting-row">
         <span class="setting-label">帮助文档</span>
         <div class="help-btns">
           <button id="helpReadme" class="btn btn-ghost" title="项目说明">README.md</button>
           <button id="helpTutorial" class="btn btn-ghost" title="零基础使用教程">教程.md</button>
         </div>
+      </div>
+      <!-- ④ 开机自动启动 -->
+      <div class="setting-row">
+        <label class="setting-label switch-line">
+          <input type="checkbox" id="autostartCheck"> 开机自动启动（常驻托盘）
+        </label>
       </div>
       <div class="modal-actions">
         <button id="settingsClose" class="btn btn-primary">关闭</button>
